@@ -25,64 +25,18 @@
         const FantasyLeagueHQ = () => {
           const [activeTab, setActiveTab] = useState('lor');
           const [activeView, setActiveView] = useState('standings');
+          const [showAdmin, setShowAdmin] = useState(false);
           const [leagueData, setLeagueData] = useState({});
           const [loading, setLoading] = useState(true);
-          const [error, setError] = useState(null);
           const [currentWeek, setCurrentWeek] = useState(10);
-
-          // ========================================
-          // EASY EDIT SECTION: Update Power Rankings Here Each Week
-          // ========================================
-          const powerRankings = {
-            lor: {
-              week: 10,
-              rankings: [
-                { teamName: "Team Name 1", change: 0 },
-                { teamName: "Team Name 2", change: 1 },
-                { teamName: "Team Name 3", change: -1 },
-                { teamName: "Team Name 4", change: 2 },
-                { teamName: "Team Name 5", change: 0 },
-                { teamName: "Team Name 6", change: -2 },
-                { teamName: "Team Name 7", change: 1 },
-                { teamName: "Team Name 8", change: 0 },
-                { teamName: "Team Name 9", change: -1 },
-                { teamName: "Team Name 10", change: 1 },
-              ]
-            },
-            ffl: {
-              week: 10,
-              rankings: [
-                { teamName: "Team Name 1", change: 0 },
-                { teamName: "Team Name 2", change: 1 },
-                { teamName: "Team Name 3", change: -1 },
-                { teamName: "Team Name 4", change: 0 },
-                { teamName: "Team Name 5", change: 2 },
-                { teamName: "Team Name 6", change: -1 },
-                { teamName: "Team Name 7", change: 0 },
-                { teamName: "Team Name 8", change: 1 },
-                { teamName: "Team Name 9", change: -2 },
-                { teamName: "Team Name 10", change: 0 },
-              ]
-            },
-            dynasty: {
-              week: 10,
-              rankings: [
-                { teamName: "Team Name 1", change: 1 },
-                { teamName: "Team Name 2", change: -1 },
-                { teamName: "Team Name 3", change: 0 },
-                { teamName: "Team Name 4", change: 2 },
-                { teamName: "Team Name 5", change: 0 },
-                { teamName: "Team Name 6", change: -2 },
-                { teamName: "Team Name 7", change: 1 },
-                { teamName: "Team Name 8", change: 0 },
-                { teamName: "Team Name 9", change: -1 },
-                { teamName: "Team Name 10", change: 0 },
-              ]
-            }
-          };
-          // ========================================
-          // END EASY EDIT SECTION
-          // ========================================
+          
+          // Custom overrides stored in memory
+          const [teamOverrides, setTeamOverrides] = useState({});
+          const [powerRankings, setPowerRankings] = useState({
+            lor: { week: 10, rankings: [] },
+            ffl: { week: 10, rankings: [] },
+            dynasty: { week: 10, rankings: [] }
+          });
 
           const leagues = {
             lor: {
@@ -110,7 +64,7 @@
 
           useEffect(() => {
             fetchAllLeagueData();
-          }, []);
+          }, [currentWeek]);
 
           const fetchAllLeagueData = async () => {
             setLoading(true);
@@ -118,18 +72,11 @@
             
             for (const [key, league] of Object.entries(leagues)) {
               try {
-                console.log(`Fetching data for ${league.name}...`);
-                
                 const rostersRes = await fetch(`https://api.sleeper.app/v1/league/${league.id}/rosters`);
                 const usersRes = await fetch(`https://api.sleeper.app/v1/league/${league.id}/users`);
                 const matchupsRes = await fetch(`https://api.sleeper.app/v1/league/${league.id}/matchups/${currentWeek}`);
 
                 if (!rostersRes.ok || !usersRes.ok || !matchupsRes.ok) {
-                  console.error(`API error for ${league.name}:`, {
-                    rosters: rostersRes.status,
-                    users: usersRes.status,
-                    matchups: matchupsRes.status
-                  });
                   continue;
                 }
 
@@ -137,60 +84,42 @@
                 const users = await usersRes.json();
                 const matchups = await matchupsRes.json();
 
-                // Fetch player projections for the current week
-                let projections = {};
-                try {
-                  const projectionsRes = await fetch(`https://api.sleeper.com/projections/nfl/2024/${currentWeek}?season_type=regular`);
-                  if (projectionsRes.ok) {
-                    const projData = await projectionsRes.json();
-                    projections = projData || {};
-                  }
-                } catch (err) {
-                  console.log('Projections not available, using custom_points');
-                }
-
-                console.log(`${league.name} data:`, { rosters: rosters.length, users: users.length, matchups: matchups.length });
-
                 allData[key] = {
                   rosters,
                   users,
                   matchups,
-                  projections,
-                  teams: combineTeamData(rosters, users)
+                  teams: combineTeamData(rosters, users, key)
                 };
               } catch (error) {
                 console.error(`Error fetching ${league.name}:`, error);
               }
             }
             
-            console.log('All league data:', allData);
             setLeagueData(allData);
             setLoading(false);
           };
 
-          const combineTeamData = (rosters, users) => {
+          const combineTeamData = (rosters, users, leagueKey) => {
             return rosters.map(roster => {
               const user = users.find(u => u.user_id === roster.owner_id);
-              let teamAvatar = null;
+              const teamId = `${leagueKey}_${roster.roster_id}`;
+              const override = teamOverrides[teamId];
               
-              // Try multiple avatar sources in order of priority
-              if (user?.metadata?.avatar) {
+              let teamAvatar = null;
+              if (override?.customLogo) {
+                teamAvatar = override.customLogo;
+              } else if (user?.metadata?.avatar) {
                 teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.metadata.avatar}`;
               } else if (user?.avatar) {
                 teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.avatar}`;
               }
               
-              // Also try full-size avatar if thumb doesn't exist
-              if (!teamAvatar && user?.avatar) {
-                teamAvatar = `https://sleepercdn.com/avatars/${user.avatar}`;
-              }
-              
-              console.log(`Team: ${user?.display_name}, Avatar URL: ${teamAvatar}`);
-              
               return {
                 roster_id: roster.roster_id,
                 owner_id: roster.owner_id,
-                team_name: user?.metadata?.team_name || user?.display_name || 'Team',
+                team_id: teamId,
+                team_name: override?.customName || user?.metadata?.team_name || user?.display_name || 'Team',
+                original_name: user?.metadata?.team_name || user?.display_name || 'Team',
                 avatar: teamAvatar,
                 wins: roster.settings.wins,
                 losses: roster.settings.losses,
@@ -201,16 +130,45 @@
             });
           };
 
+          const handleTeamOverride = (teamId, field, value) => {
+            setTeamOverrides(prev => ({
+              ...prev,
+              [teamId]: {
+                ...prev[teamId],
+                [field]: value
+              }
+            }));
+          };
+
+          const handleLogoUpload = (teamId, event) => {
+            const file = event.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                handleTeamOverride(teamId, 'customLogo', e.target.result);
+              };
+              reader.readAsDataURL(file);
+            }
+          };
+
+          const updatePowerRankings = (leagueKey, rankings) => {
+            setPowerRankings(prev => ({
+              ...prev,
+              [leagueKey]: {
+                ...prev[leagueKey],
+                rankings
+              }
+            }));
+          };
+
           const getStandings = (leagueKey) => {
             const data = leagueData[leagueKey];
             if (!data) return [];
             
-            const sorted = [...data.teams].sort((a, b) => {
+            return [...data.teams].sort((a, b) => {
               if (b.wins !== a.wins) return b.wins - a.wins;
               return b.points_for - a.points_for;
             });
-
-            return sorted;
           };
 
           const getStandingsByDivision = (leagueKey) => {
@@ -246,36 +204,16 @@
               const team1Data = data.teams.find(t => t.roster_id === matchup[0].roster_id);
               const team2Data = data.teams.find(t => t.roster_id === matchup[1]?.roster_id);
               
-              // Calculate projected points from starters
-              const getProjectedPoints = (matchupData) => {
-                if (!matchupData.starters) return 0;
-                
-                // Try to use projections API data first
-                if (data.projections && Object.keys(data.projections).length > 0) {
-                  return matchupData.starters.reduce((sum, playerId) => {
-                    const proj = data.projections[playerId];
-                    return sum + (proj?.stats?.pts_half_ppr || proj?.stats?.pts_ppr || 0);
-                  }, 0);
-                }
-                
-                // Fallback: use custom_points or players_points
-                if (matchupData.custom_points) {
-                  return matchupData.custom_points;
-                }
-                
-                return 0;
-              };
-              
               return {
                 team1: {
                   ...team1Data,
                   points: matchup[0].points || 0,
-                  projected: getProjectedPoints(matchup[0])
+                  projected: matchup[0].custom_points || 0
                 },
                 team2: team2Data ? {
                   ...team2Data,
                   points: matchup[1].points || 0,
-                  projected: getProjectedPoints(matchup[1])
+                  projected: matchup[1].custom_points || 0
                 } : null
               };
             });
@@ -299,6 +237,13 @@
             </svg>
           );
 
+          const Settings = () => (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          );
+
           const getRankIcon = (change) => {
             if (change > 0) return <TrendingUp />;
             if (change < 0) return <TrendingDown />;
@@ -307,13 +252,219 @@
 
           const currentLeague = leagues[activeTab];
 
+          // Admin Portal Component
+          const AdminPortal = () => {
+            const [adminTab, setAdminTab] = useState('teams');
+            const [selectedLeague, setSelectedLeague] = useState('lor');
+            const [rankingForm, setRankingForm] = useState('');
+
+            const allTeams = leagueData[selectedLeague]?.teams || [];
+
+            return (
+              <div className="fixed inset-0 bg-black bg-opacity-75 z-50 overflow-y-auto">
+                <div className="min-h-screen px-4 py-8">
+                  <div className="max-w-6xl mx-auto bg-gray-900 rounded-lg shadow-2xl">
+                    <div className="p-6 border-b border-gray-700 flex justify-between items-center">
+                      <h2 className="text-2xl font-bold text-white">Admin Portal</h2>
+                      <button 
+                        onClick={() => setShowAdmin(false)}
+                        className="text-gray-400 hover:text-white text-2xl"
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <div className="p-6">
+                      <div className="flex gap-4 mb-6">
+                        <button
+                          onClick={() => setAdminTab('teams')}
+                          className={`px-4 py-2 rounded ${adminTab === 'teams' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
+                        >
+                          Manage Teams
+                        </button>
+                        <button
+                          onClick={() => setAdminTab('power')}
+                          className={`px-4 py-2 rounded ${adminTab === 'power' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
+                        >
+                          Power Rankings
+                        </button>
+                        <button
+                          onClick={() => setAdminTab('settings')}
+                          className={`px-4 py-2 rounded ${adminTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
+                        >
+                          Settings
+                        </button>
+                      </div>
+
+                      {adminTab === 'teams' && (
+                        <div>
+                          <div className="mb-4">
+                            <label className="text-white block mb-2">Select League:</label>
+                            <select
+                              value={selectedLeague}
+                              onChange={(e) => setSelectedLeague(e.target.value)}
+                              className="bg-gray-800 text-white px-4 py-2 rounded w-full"
+                            >
+                              {Object.entries(leagues).map(([key, league]) => (
+                                <option key={key} value={key}>{league.name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-4">
+                            {allTeams.map(team => (
+                              <div key={team.team_id} className="bg-gray-800 p-4 rounded-lg">
+                                <div className="grid md:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-gray-400 text-sm block mb-1">Original Name:</label>
+                                    <p className="text-white mb-2">{team.original_name}</p>
+                                    <label className="text-gray-400 text-sm block mb-1">Custom Name:</label>
+                                    <input
+                                      type="text"
+                                      value={teamOverrides[team.team_id]?.customName || ''}
+                                      onChange={(e) => handleTeamOverride(team.team_id, 'customName', e.target.value)}
+                                      placeholder="Leave blank to use original"
+                                      className="bg-gray-700 text-white px-3 py-2 rounded w-full"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-gray-400 text-sm block mb-1">Custom Logo:</label>
+                                    <div className="flex items-center gap-4">
+                                      {team.avatar && (
+                                        <img src={team.avatar} alt={team.team_name} className="w-16 h-16 rounded" />
+                                      )}
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleLogoUpload(team.team_id, e)}
+                                        className="text-gray-400 text-sm"
+                                      />
+                                    </div>
+                                    {teamOverrides[team.team_id]?.customLogo && (
+                                      <button
+                                        onClick={() => handleTeamOverride(team.team_id, 'customLogo', null)}
+                                        className="text-red-400 text-sm mt-2"
+                                      >
+                                        Remove Custom Logo
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {adminTab === 'power' && (
+                        <div>
+                          <div className="mb-4">
+                            <label className="text-white block mb-2">Select League:</label>
+                            <select
+                              value={selectedLeague}
+                              onChange={(e) => setSelectedLeague(e.target.value)}
+                              className="bg-gray-800 text-white px-4 py-2 rounded w-full"
+                            >
+                              {Object.entries(leagues).map(([key, league]) => (
+                                <option key={key} value={key}>{league.name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="bg-gray-800 p-4 rounded mb-4">
+                            <h3 className="text-white font-bold mb-2">How to Format Power Rankings:</h3>
+                            <p className="text-gray-400 text-sm mb-2">Enter one team per line in this format:</p>
+                            <code className="text-green-400 text-sm block mb-2">Team Name | change</code>
+                            <p className="text-gray-400 text-sm">Example:</p>
+                            <code className="text-green-400 text-sm block">The Champions | 1</code>
+                            <code className="text-green-400 text-sm block">Last Place | -2</code>
+                            <code className="text-green-400 text-sm block">Middle Team | 0</code>
+                          </div>
+
+                          <textarea
+                            value={rankingForm}
+                            onChange={(e) => setRankingForm(e.target.value)}
+                            placeholder="Team Name 1 | 0
+Team Name 2 | 1
+Team Name 3 | -1"
+                            className="bg-gray-700 text-white px-4 py-3 rounded w-full h-64 font-mono text-sm"
+                          />
+
+                          <button
+                            onClick={() => {
+                              const lines = rankingForm.trim().split('\n');
+                              const rankings = lines.map(line => {
+                                const [teamName, change] = line.split('|').map(s => s.trim());
+                                return {
+                                  teamName,
+                                  change: parseInt(change) || 0
+                                };
+                              });
+                              updatePowerRankings(selectedLeague, rankings);
+                              alert('Power rankings updated!');
+                            }}
+                            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+                          >
+                            Save Power Rankings
+                          </button>
+                        </div>
+                      )}
+
+                      {adminTab === 'settings' && (
+                        <div className="space-y-6">
+                          <div>
+                            <label className="text-white block mb-2">Current Week:</label>
+                            <input
+                              type="number"
+                              value={currentWeek}
+                              onChange={(e) => setCurrentWeek(parseInt(e.target.value))}
+                              className="bg-gray-700 text-white px-4 py-2 rounded w-32"
+                            />
+                          </div>
+
+                          <button
+                            onClick={fetchAllLeagueData}
+                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+                          >
+                            Refresh All Data
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-6 border-t border-gray-700">
+                      <button
+                        onClick={() => {
+                          fetchAllLeagueData();
+                          setShowAdmin(false);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+                      >
+                        Apply Changes & Close
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          };
+
           return (
             <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-              <header className="bg-black bg-opacity-50 backdrop-blur-md border-b border-gray-700 sticky top-0 z-50">
-                <div className="container mx-auto px-4 py-6">
-                  <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
+              {showAdmin && <AdminPortal />}
+              
+              <header className="bg-black bg-opacity-50 backdrop-blur-md border-b border-gray-700 sticky top-0 z-40">
+                <div className="container mx-auto px-4 py-6 flex justify-between items-center">
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
                     Fantasy League HQ
                   </h1>
+                  <button
+                    onClick={() => setShowAdmin(true)}
+                    className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors"
+                  >
+                    <Settings />
+                    <span>Admin</span>
+                  </button>
                 </div>
               </header>
 
@@ -378,26 +529,9 @@
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
                     <p className="mt-4 text-gray-400">Loading league data...</p>
                   </div>
-                ) : error ? (
-                  <div className="text-center py-12">
-                    <p className="text-red-400 text-lg">{error}</p>
-                    <button 
-                      onClick={fetchAllLeagueData}
-                      className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                    >
-                      Retry
-                    </button>
-                  </div>
                 ) : !leagueData[activeTab] || !leagueData[activeTab].teams || leagueData[activeTab].teams.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-yellow-400 text-lg">No data available for this league</p>
-                    <p className="text-gray-400 mt-2">Check console for details</p>
-                    <button 
-                      onClick={fetchAllLeagueData}
-                      className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                    >
-                      Reload
-                    </button>
                   </div>
                 ) : (
                   <div>
@@ -413,24 +547,24 @@
                                     {division} Division
                                   </h2>
                                   <div className="space-y-3">
-                                            {standings.map((team, idx) => (
-                                              <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex items-center gap-4 hover:bg-opacity-70 transition-all">
-                                                <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
-                                                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                                  {team.avatar ? (
-                                                    <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
-                                                  ) : (
-                                                    <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
-                                                  )}
-                                                </div>
-                                                <div className="flex-1">
-                                                  <h3 className="font-semibold text-lg">{team.team_name}</h3>
-                                                  <p className="text-sm text-gray-400">
-                                                    {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
-                                                  </p>
-                                                </div>
-                                              </div>
-                                            ))}
+                                    {standings.map((team, idx) => (
+                                      <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex items-center gap-4 hover:bg-opacity-70 transition-all">
+                                        <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
+                                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                          {team.avatar ? (
+                                            <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
+                                          ) : (
+                                            <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
+                                          )}
+                                        </div>
+                                        <div className="flex-1">
+                                          <h3 className="font-semibold text-lg">{team.team_name}</h3>
+                                          <p className="text-sm text-gray-400">
+                                            {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ))}
                                   </div>
                                 </div>
                               );
@@ -441,26 +575,26 @@
                             <h2 className="text-2xl font-bold mb-4" style={{ color: currentLeague.colors.secondary }}>
                               League Standings
                             </h2>
-                                    <div className="space-y-3">
-                                      {getStandings(activeTab).map((team, idx) => (
-                                        <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex items-center gap-4 hover:bg-opacity-70 transition-all">
-                                          <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
-                                          <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                            {team.avatar ? (
-                                              <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
-                                            ) : (
-                                              <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
-                                            )}
-                                          </div>
-                                          <div className="flex-1">
-                                            <h3 className="font-semibold text-lg">{team.team_name}</h3>
-                                            <p className="text-sm text-gray-400">
-                                              {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
-                                            </p>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
+                            <div className="space-y-3">
+                              {getStandings(activeTab).map((team, idx) => (
+                                <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex items-center gap-4 hover:bg-opacity-70 transition-all">
+                                  <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
+                                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                    {team.avatar ? (
+                                      <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
+                                    )}
+                                  </div>
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-lg">{team.team_name}</h3>
+                                    <p className="text-sm text-gray-400">
+                                      {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -470,49 +604,49 @@
                       <div className="grid gap-6">
                         {getMatchups(activeTab).map((matchup, idx) => (
                           <div key={idx} className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
-                                    <div className="flex items-center justify-between gap-6">
-                                      <div className="flex-1 flex items-center gap-4">
-                                        <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                          {matchup.team1.avatar ? (
-                                            <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-full h-full object-cover" />
-                                          ) : (
-                                            <span className="text-2xl font-bold text-gray-400">{matchup.team1.team_name.charAt(0)}</span>
-                                          )}
-                                        </div>
-                                        <div>
-                                          <h3 className="font-semibold text-lg">{matchup.team1.team_name}</h3>
-                                          <p className="text-sm text-gray-400">{matchup.team1.wins}-{matchup.team1.losses}</p>
-                                          <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
-                                            {matchup.team1.points.toFixed(2)}
-                                          </p>
-                                          <p className="text-xs text-gray-500">Proj: {matchup.team1.projected.toFixed(2)}</p>
-                                        </div>
-                                      </div>
+                            <div className="flex items-center justify-between gap-6">
+                              <div className="flex-1 flex items-center gap-4">
+                                <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                  {matchup.team1.avatar ? (
+                                    <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="text-2xl font-bold text-gray-400">{matchup.team1.team_name.charAt(0)}</span>
+                                  )}
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold text-lg">{matchup.team1.team_name}</h3>
+                                  <p className="text-sm text-gray-400">{matchup.team1.wins}-{matchup.team1.losses}</p>
+                                  <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
+                                    {matchup.team1.points.toFixed(2)}
+                                  </p>
+                                  <p className="text-xs text-gray-500">Proj: {matchup.team1.projected.toFixed(2)}</p>
+                                </div>
+                              </div>
 
-                                      <div className="text-3xl font-bold text-gray-600">VS</div>
+                              <div className="text-3xl font-bold text-gray-600">VS</div>
 
-                                      {matchup.team2 ? (
-                                        <div className="flex-1 flex items-center gap-4 justify-end">
-                                          <div className="text-right">
-                                            <h3 className="font-semibold text-lg">{matchup.team2.team_name}</h3>
-                                            <p className="text-sm text-gray-400">{matchup.team2.wins}-{matchup.team2.losses}</p>
-                                            <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
-                                              {matchup.team2.points.toFixed(2)}
-                                            </p>
-                                            <p className="text-xs text-gray-500">Proj: {matchup.team2.projected.toFixed(2)}</p>
-                                          </div>
-                                          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                            {matchup.team2.avatar ? (
-                                              <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-full h-full object-cover" />
-                                            ) : (
-                                              <span className="text-2xl font-bold text-gray-400">{matchup.team2.team_name.charAt(0)}</span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="flex-1 text-right text-gray-500">BYE WEEK</div>
-                                      )}
-                                    </div>
+                              {matchup.team2 ? (
+                                <div className="flex-1 flex items-center gap-4 justify-end">
+                                  <div className="text-right">
+                                    <h3 className="font-semibold text-lg">{matchup.team2.team_name}</h3>
+                                    <p className="text-sm text-gray-400">{matchup.team2.wins}-{matchup.team2.losses}</p>
+                                    <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
+                                      {matchup.team2.points.toFixed(2)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">Proj: {matchup.team2.projected.toFixed(2)}</p>
+                                  </div>
+                                  <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                    {matchup.team2.avatar ? (
+                                      <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="text-2xl font-bold text-gray-400">{matchup.team2.team_name.charAt(0)}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex-1 text-right text-gray-500">BYE WEEK</div>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -526,45 +660,57 @@
                           </h2>
                           <span className="text-sm text-gray-400">Week {powerRankings[activeTab].week}</span>
                         </div>
-                        <div className="space-y-3">
-                                  {powerRankings[activeTab].rankings.map((ranking, idx) => {
-                                    const team = leagueData[activeTab]?.teams.find(t => 
-                                      t.team_name.toLowerCase().includes(ranking.teamName.toLowerCase()) ||
-                                      ranking.teamName.toLowerCase().includes(t.team_name.toLowerCase())
-                                    );
-                                    
-                                    return (
-                                      <div key={idx} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex items-center gap-4 hover:bg-opacity-70 transition-all">
-                                        <div className="flex items-center gap-3">
-                                          <div className="text-2xl font-bold w-8" style={{ color: currentLeague.colors.primary }}>
-                                            {idx + 1}
-                                          </div>
-                                          {getRankIcon(ranking.change)}
-                                        </div>
-                                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                          {team?.avatar ? (
-                                            <img src={team.avatar} alt={ranking.teamName} className="w-full h-full object-cover" />
-                                          ) : (
-                                            <span className="text-xl font-bold text-gray-400">{ranking.teamName.charAt(0)}</span>
-                                          )}
-                                        </div>
-                                        <div className="flex-1">
-                                          <h3 className="font-semibold text-lg">{ranking.teamName}</h3>
-                                          {team && (
-                                            <p className="text-sm text-gray-400">
-                                              {team.wins}-{team.losses} • {team.points_for.toFixed(2)} PF
-                                            </p>
-                                          )}
-                                        </div>
-                                        {ranking.change !== 0 && (
-                                          <div className={`text-sm font-semibold ${ranking.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                            {ranking.change > 0 ? '+' : ''}{ranking.change}
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                        </div>
+                        {powerRankings[activeTab].rankings.length === 0 ? (
+                          <div className="text-center py-8">
+                            <p className="text-gray-400">No power rankings set yet.</p>
+                            <button
+                              onClick={() => setShowAdmin(true)}
+                              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+                            >
+                              Set Power Rankings in Admin
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {powerRankings[activeTab].rankings.map((ranking, idx) => {
+                              const team = leagueData[activeTab]?.teams.find(t => 
+                                t.team_name.toLowerCase().includes(ranking.teamName.toLowerCase()) ||
+                                ranking.teamName.toLowerCase().includes(t.team_name.toLowerCase())
+                              );
+                              
+                              return (
+                                <div key={idx} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex items-center gap-4 hover:bg-opacity-70 transition-all">
+                                  <div className="flex items-center gap-3">
+                                    <div className="text-2xl font-bold w-8" style={{ color: currentLeague.colors.primary }}>
+                                      {idx + 1}
+                                    </div>
+                                    {getRankIcon(ranking.change)}
+                                  </div>
+                                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                    {team?.avatar ? (
+                                      <img src={team.avatar} alt={ranking.teamName} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="text-xl font-bold text-gray-400">{ranking.teamName.charAt(0)}</span>
+                                    )}
+                                  </div>
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-lg">{ranking.teamName}</h3>
+                                    {team && (
+                                      <p className="text-sm text-gray-400">
+                                        {team.wins}-{team.losses} • {team.points_for.toFixed(2)} PF
+                                      </p>
+                                    )}
+                                  </div>
+                                  {ranking.change !== 0 && (
+                                    <div className={`text-sm font-semibold ${ranking.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                      {ranking.change > 0 ? '+' : ''}{ranking.change}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
