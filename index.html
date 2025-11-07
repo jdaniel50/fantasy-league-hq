@@ -137,12 +137,25 @@
                 const users = await usersRes.json();
                 const matchups = await matchupsRes.json();
 
+                // Fetch player projections for the current week
+                let projections = {};
+                try {
+                  const projectionsRes = await fetch(`https://api.sleeper.com/projections/nfl/2024/${currentWeek}?season_type=regular`);
+                  if (projectionsRes.ok) {
+                    const projData = await projectionsRes.json();
+                    projections = projData || {};
+                  }
+                } catch (err) {
+                  console.log('Projections not available, using custom_points');
+                }
+
                 console.log(`${league.name} data:`, { rosters: rosters.length, users: users.length, matchups: matchups.length });
 
                 allData[key] = {
                   rosters,
                   users,
                   matchups,
+                  projections,
                   teams: combineTeamData(rosters, users)
                 };
               } catch (error) {
@@ -159,11 +172,20 @@
             return rosters.map(roster => {
               const user = users.find(u => u.user_id === roster.owner_id);
               let teamAvatar = null;
+              
+              // Try multiple avatar sources in order of priority
               if (user?.metadata?.avatar) {
                 teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.metadata.avatar}`;
               } else if (user?.avatar) {
                 teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.avatar}`;
               }
+              
+              // Also try full-size avatar if thumb doesn't exist
+              if (!teamAvatar && user?.avatar) {
+                teamAvatar = `https://sleepercdn.com/avatars/${user.avatar}`;
+              }
+              
+              console.log(`Team: ${user?.display_name}, Avatar URL: ${teamAvatar}`);
               
               return {
                 roster_id: roster.roster_id,
@@ -224,16 +246,36 @@
               const team1Data = data.teams.find(t => t.roster_id === matchup[0].roster_id);
               const team2Data = data.teams.find(t => t.roster_id === matchup[1]?.roster_id);
               
+              // Calculate projected points from starters
+              const getProjectedPoints = (matchupData) => {
+                if (!matchupData.starters) return 0;
+                
+                // Try to use projections API data first
+                if (data.projections && Object.keys(data.projections).length > 0) {
+                  return matchupData.starters.reduce((sum, playerId) => {
+                    const proj = data.projections[playerId];
+                    return sum + (proj?.stats?.pts_half_ppr || proj?.stats?.pts_ppr || 0);
+                  }, 0);
+                }
+                
+                // Fallback: use custom_points or players_points
+                if (matchupData.custom_points) {
+                  return matchupData.custom_points;
+                }
+                
+                return 0;
+              };
+              
               return {
                 team1: {
                   ...team1Data,
-                  points: matchup[0].points,
-                  projected: matchup[0].players_points ? Object.values(matchup[0].players_points).reduce((a, b) => a + b, 0) : 0
+                  points: matchup[0].points || 0,
+                  projected: getProjectedPoints(matchup[0])
                 },
                 team2: team2Data ? {
                   ...team2Data,
-                  points: matchup[1].points,
-                  projected: matchup[1].players_points ? Object.values(matchup[1].players_points).reduce((a, b) => a + b, 0) : 0
+                  points: matchup[1].points || 0,
+                  projected: getProjectedPoints(matchup[1])
                 } : null
               };
             });
