@@ -30,33 +30,95 @@
           const [loading, setLoading] = useState(true);
           const [currentWeek, setCurrentWeek] = useState(10);
           
-          // Custom overrides stored in memory
-          const [teamOverrides, setTeamOverrides] = useState({});
-          const [powerRankings, setPowerRankings] = useState({
-            lor: { week: 10, rankings: [] },
-            ffl: { week: 10, rankings: [] },
-            dynasty: { week: 10, rankings: [] }
-          });
+          // Load saved data from localStorage on mount
+          const loadFromStorage = (key, defaultValue) => {
+            try {
+              const saved = localStorage.getItem(key);
+              return saved ? JSON.parse(saved) : defaultValue;
+            } catch {
+              return defaultValue;
+            }
+          };
+
+          // Save to localStorage whenever data changes
+          const saveToStorage = (key, value) => {
+            try {
+              localStorage.setItem(key, JSON.stringify(value));
+            } catch (error) {
+              console.error('Error saving to storage:', error);
+            }
+          };
+          
+          // Custom overrides stored in localStorage
+          const [teamOverrides, setTeamOverrides] = useState(() => 
+            loadFromStorage('teamOverrides', {})
+          );
+          const [leagueLogos, setLeagueLogos] = useState(() => 
+            loadFromStorage('leagueLogos', {
+              lor: 'https://i.postimg.cc/q76TBt3B/League-of-Record-logo.png',
+              ffl: 'https://i.postimg.cc/VkwH2PjJ/FFL-logo.png',
+              dynasty: 'https://i.postimg.cc/J0svvXWz/Dynasty-Champs-logo.png'
+            })
+          );
+          const [standingsNotes, setStandingsNotes] = useState(() => 
+            loadFromStorage('standingsNotes', {
+              lor: '',
+              ffl: '',
+              dynasty: ''
+            })
+          );
+          const [matchupNotes, setMatchupNotes] = useState(() => 
+            loadFromStorage('matchupNotes', {
+              lor: '',
+              ffl: '',
+              dynasty: ''
+            })
+          );
+          const [powerRankings, setPowerRankings] = useState(() => 
+            loadFromStorage('powerRankings', {
+              lor: { week: 10, rankings: [] },
+              ffl: { week: 10, rankings: [] },
+              dynasty: { week: 10, rankings: [] }
+            })
+          );
+
+          // Save to localStorage whenever these states change
+          useEffect(() => {
+            saveToStorage('teamOverrides', teamOverrides);
+          }, [teamOverrides]);
+
+          useEffect(() => {
+            saveToStorage('leagueLogos', leagueLogos);
+          }, [leagueLogos]);
+
+          useEffect(() => {
+            saveToStorage('standingsNotes', standingsNotes);
+          }, [standingsNotes]);
+
+          useEffect(() => {
+            saveToStorage('matchupNotes', matchupNotes);
+          }, [matchupNotes]);
+
+          useEffect(() => {
+            saveToStorage('powerRankings', powerRankings);
+          }, [powerRankings]);
 
           const leagues = {
             lor: {
               id: '1186844188245356544',
               name: 'League of Record',
-              logo: 'https://i.postimg.cc/q76TBt3B/League-of-Record-logo.png',
               colors: { primary: '#114477', secondary: '#47b26f' },
               hasDivisions: true
             },
             ffl: {
               id: '1257084943821967360',
               name: 'FFL',
-              logo: 'https://i.postimg.cc/VkwH2PjJ/FFL-logo.png',
               colors: { primary: '#5aacd8', secondary: '#1c3d5a' },
               hasDivisions: false
             },
             dynasty: {
               id: '1186825886808555520',
               name: 'Dynasty Champs',
-              logo: 'https://i.postimg.cc/J0svvXWz/Dynasty-Champs-logo.png',
               colors: { primary: '#1a465a', secondary: '#aaaaaa' },
               hasDivisions: true
             }
@@ -146,6 +208,20 @@
               const reader = new FileReader();
               reader.onload = (e) => {
                 handleTeamOverride(teamId, 'customLogo', e.target.result);
+              };
+              reader.readAsDataURL(file);
+            }
+          };
+
+          const handleLeagueLogoUpload = (leagueKey, event) => {
+            const file = event.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                setLeagueLogos(prev => ({
+                  ...prev,
+                  [leagueKey]: e.target.result
+                }));
               };
               reader.readAsDataURL(file);
             }
@@ -275,12 +351,30 @@
                     </div>
 
                     <div className="p-6">
-                      <div className="flex gap-4 mb-6">
+                      <div className="flex gap-4 mb-6 flex-wrap">
                         <button
                           onClick={() => setAdminTab('teams')}
                           className={`px-4 py-2 rounded ${adminTab === 'teams' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
                         >
                           Manage Teams
+                        </button>
+                        <button
+                          onClick={() => setAdminTab('leagues')}
+                          className={`px-4 py-2 rounded ${adminTab === 'leagues' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
+                        >
+                          League Logos
+                        </button>
+                        <button
+                          onClick={() => setAdminTab('standings-notes')}
+                          className={`px-4 py-2 rounded ${adminTab === 'standings-notes' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
+                        >
+                          Standings Notes
+                        </button>
+                        <button
+                          onClick={() => setAdminTab('matchup-notes')}
+                          className={`px-4 py-2 rounded ${adminTab === 'matchup-notes' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
+                        >
+                          Matchup Notes
                         </button>
                         <button
                           onClick={() => setAdminTab('power')}
@@ -356,6 +450,74 @@
                         </div>
                       )}
 
+                      {adminTab === 'leagues' && (
+                        <div>
+                          <h3 className="text-white text-xl font-bold mb-4">Upload League Logos</h3>
+                          <div className="space-y-6">
+                            {Object.entries(leagues).map(([key, league]) => (
+                              <div key={key} className="bg-gray-800 p-4 rounded-lg">
+                                <h4 className="text-white font-semibold mb-3">{league.name}</h4>
+                                <div className="flex items-center gap-4">
+                                  <img 
+                                    src={leagueLogos[key]} 
+                                    alt={league.name} 
+                                    className="w-20 h-20 rounded object-cover"
+                                  />
+                                  <div>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={(e) => handleLeagueLogoUpload(key, e)}
+                                      className="text-gray-400 text-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {adminTab === 'standings-notes' && (
+                        <div>
+                          <h3 className="text-white text-xl font-bold mb-4">Standings Notes</h3>
+                          <p className="text-gray-400 text-sm mb-4">Add context or commentary for each league's standings page</p>
+                          <div className="space-y-6">
+                            {Object.entries(leagues).map(([key, league]) => (
+                              <div key={key} className="bg-gray-800 p-4 rounded-lg">
+                                <label className="text-white font-semibold block mb-2">{league.name}</label>
+                                <textarea
+                                  value={standingsNotes[key]}
+                                  onChange={(e) => setStandingsNotes(prev => ({...prev, [key]: e.target.value}))}
+                                  placeholder="Add notes about standings, playoff implications, etc."
+                                  className="bg-gray-700 text-white px-4 py-3 rounded w-full h-32"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {adminTab === 'matchup-notes' && (
+                        <div>
+                          <h3 className="text-white text-xl font-bold mb-4">Matchup Notes</h3>
+                          <p className="text-gray-400 text-sm mb-4">Add notes or analysis for the current week's matchups</p>
+                          <div className="space-y-6">
+                            {Object.entries(leagues).map(([key, league]) => (
+                              <div key={key} className="bg-gray-800 p-4 rounded-lg">
+                                <label className="text-white font-semibold block mb-2">{league.name} - Week {currentWeek}</label>
+                                <textarea
+                                  value={matchupNotes[key]}
+                                  onChange={(e) => setMatchupNotes(prev => ({...prev, [key]: e.target.value}))}
+                                  placeholder="Add matchup analysis, injury notes, key players to watch, etc."
+                                  className="bg-gray-700 text-white px-4 py-3 rounded w-full h-32"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {adminTab === 'power' && (
                         <div>
                           <div className="mb-4">
@@ -424,10 +586,54 @@ Team Name 3 | -1"
 
                           <button
                             onClick={fetchAllLeagueData}
-                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded block"
                           >
                             Refresh All Data
                           </button>
+
+                          <div className="border-t border-gray-700 pt-6">
+                            <h3 className="text-white font-bold mb-4">Data Management</h3>
+                            
+                            <button
+                              onClick={() => {
+                                const allData = {
+                                  teamOverrides,
+                                  leagueLogos,
+                                  standingsNotes,
+                                  matchupNotes,
+                                  powerRankings,
+                                  currentWeek
+                                };
+                                const dataStr = JSON.stringify(allData, null, 2);
+                                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                                const url = URL.createObjectURL(dataBlob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = 'fantasy-league-backup.json';
+                                link.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded block mb-3"
+                            >
+                              Export All Settings (Backup)
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                if (confirm('Are you sure you want to clear ALL saved data? This cannot be undone!')) {
+                                  localStorage.clear();
+                                  window.location.reload();
+                                }
+                              }}
+                              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded block"
+                            >
+                              Clear All Saved Data
+                            </button>
+
+                            <p className="text-gray-400 text-sm mt-4">
+                              All your customizations (logos, team names, notes, rankings) are automatically saved to your browser's storage.
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -485,7 +691,7 @@ Team Name 3 | -1"
                         borderWidth: activeTab === key ? '2px' : '0'
                       }}
                     >
-                      <img src={league.logo} alt={league.name} className="w-10 h-10 rounded" />
+                      <img src={leagueLogos[key]} alt={league.name} className="w-10 h-10 rounded" />
                       <span className="font-semibold whitespace-nowrap">{league.name}</span>
                     </button>
                   ))}
@@ -537,6 +743,17 @@ Team Name 3 | -1"
                   <div>
                     {activeView === 'standings' && (
                       <div>
+                        {standingsNotes[activeTab] && (
+                          <div className="bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg p-4 mb-6">
+                            <div className="flex items-start gap-3">
+                              <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                              </svg>
+                              <p className="text-blue-100 whitespace-pre-wrap">{standingsNotes[activeTab]}</p>
+                            </div>
+                          </div>
+                        )}
+                        
                         {currentLeague.hasDivisions ? (
                           <div className="grid md:grid-cols-2 gap-6">
                             {['east', 'west'].map(division => {
@@ -601,54 +818,67 @@ Team Name 3 | -1"
                     )}
 
                     {activeView === 'matchups' && (
-                      <div className="grid gap-6">
-                        {getMatchups(activeTab).map((matchup, idx) => (
-                          <div key={idx} className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
-                            <div className="flex items-center justify-between gap-6">
-                              <div className="flex-1 flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                  {matchup.team1.avatar ? (
-                                    <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <span className="text-2xl font-bold text-gray-400">{matchup.team1.team_name.charAt(0)}</span>
-                                  )}
-                                </div>
-                                <div>
-                                  <h3 className="font-semibold text-lg">{matchup.team1.team_name}</h3>
-                                  <p className="text-sm text-gray-400">{matchup.team1.wins}-{matchup.team1.losses}</p>
-                                  <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
-                                    {matchup.team1.points.toFixed(2)}
-                                  </p>
-                                  <p className="text-xs text-gray-500">Proj: {matchup.team1.projected.toFixed(2)}</p>
-                                </div>
-                              </div>
-
-                              <div className="text-3xl font-bold text-gray-600">VS</div>
-
-                              {matchup.team2 ? (
-                                <div className="flex-1 flex items-center gap-4 justify-end">
-                                  <div className="text-right">
-                                    <h3 className="font-semibold text-lg">{matchup.team2.team_name}</h3>
-                                    <p className="text-sm text-gray-400">{matchup.team2.wins}-{matchup.team2.losses}</p>
-                                    <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
-                                      {matchup.team2.points.toFixed(2)}
-                                    </p>
-                                    <p className="text-xs text-gray-500">Proj: {matchup.team2.projected.toFixed(2)}</p>
-                                  </div>
-                                  <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                    {matchup.team2.avatar ? (
-                                      <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <span className="text-2xl font-bold text-gray-400">{matchup.team2.team_name.charAt(0)}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="flex-1 text-right text-gray-500">BYE WEEK</div>
-                              )}
+                      <div>
+                        {matchupNotes[activeTab] && (
+                          <div className="bg-purple-900 bg-opacity-30 border border-purple-700 rounded-lg p-4 mb-6">
+                            <div className="flex items-start gap-3">
+                              <svg className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                              </svg>
+                              <p className="text-purple-100 whitespace-pre-wrap">{matchupNotes[activeTab]}</p>
                             </div>
                           </div>
-                        ))}
+                        )}
+                        
+                        <div className="grid gap-6">
+                          {getMatchups(activeTab).map((matchup, idx) => (
+                            <div key={idx} className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
+                              <div className="flex items-center justify-between gap-6">
+                                <div className="flex-1 flex items-center gap-4">
+                                  <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                    {matchup.team1.avatar ? (
+                                      <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <span className="text-2xl font-bold text-gray-400">{matchup.team1.team_name.charAt(0)}</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <h3 className="font-semibold text-lg">{matchup.team1.team_name}</h3>
+                                    <p className="text-sm text-gray-400">{matchup.team1.wins}-{matchup.team1.losses}</p>
+                                    <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
+                                      {matchup.team1.points.toFixed(2)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">Proj: {matchup.team1.projected.toFixed(2)}</p>
+                                  </div>
+                                </div>
+
+                                <div className="text-3xl font-bold text-gray-600">VS</div>
+
+                                {matchup.team2 ? (
+                                  <div className="flex-1 flex items-center gap-4 justify-end">
+                                    <div className="text-right">
+                                      <h3 className="font-semibold text-lg">{matchup.team2.team_name}</h3>
+                                      <p className="text-sm text-gray-400">{matchup.team2.wins}-{matchup.team2.losses}</p>
+                                      <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
+                                        {matchup.team2.points.toFixed(2)}
+                                      </p>
+                                      <p className="text-xs text-gray-500">Proj: {matchup.team2.projected.toFixed(2)}</p>
+                                    </div>
+                                    <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                      {matchup.team2.avatar ? (
+                                        <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <span className="text-2xl font-bold text-gray-400">{matchup.team2.team_name.charAt(0)}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex-1 text-right text-gray-500">BYE WEEK</div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
