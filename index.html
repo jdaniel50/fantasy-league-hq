@@ -35,7 +35,8 @@
             try {
               const saved = localStorage.getItem(key);
               return saved ? JSON.parse(saved) : defaultValue;
-            } catch {
+            } catch (e) {
+              console.error('Error loading from storage:', e);
               return defaultValue;
             }
           };
