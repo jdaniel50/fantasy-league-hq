@@ -29,8 +29,6 @@
           const [leagueData, setLeagueData] = useState({});
           const [loading, setLoading] = useState(true);
           const [currentWeek, setCurrentWeek] = useState(10);
-          
-          // Custom overrides stored in memory
           const [teamOverrides, setTeamOverrides] = useState({});
           const [teamNotes, setTeamNotes] = useState({});
           const [matchupNotes, setMatchupNotes] = useState({});
@@ -82,9 +80,7 @@
                 const usersRes = await fetch(`https://api.sleeper.app/v1/league/${league.id}/users`);
                 const matchupsRes = await fetch(`https://api.sleeper.app/v1/league/${league.id}/matchups/${currentWeek}`);
 
-                if (!rostersRes.ok || !usersRes.ok || !matchupsRes.ok) {
-                  continue;
-                }
+                if (!rostersRes.ok || !usersRes.ok || !matchupsRes.ok) continue;
 
                 const rosters = await rostersRes.json();
                 const users = await usersRes.json();
@@ -139,10 +135,7 @@
           const handleTeamOverride = (teamId, field, value) => {
             setTeamOverrides(prev => ({
               ...prev,
-              [teamId]: {
-                ...prev[teamId],
-                [field]: value
-              }
+              [teamId]: { ...prev[teamId], [field]: value }
             }));
           };
 
@@ -160,17 +153,13 @@
           const updatePowerRankings = (leagueKey, rankings) => {
             setPowerRankings(prev => ({
               ...prev,
-              [leagueKey]: {
-                ...prev[leagueKey],
-                rankings
-              }
+              [leagueKey]: { ...prev[leagueKey], rankings }
             }));
           };
 
           const getStandings = (leagueKey) => {
             const data = leagueData[leagueKey];
             if (!data) return [];
-            
             return [...data.teams].sort((a, b) => {
               if (b.wins !== a.wins) return b.wins - a.wins;
               return b.points_for - a.points_for;
@@ -200,9 +189,7 @@
 
             const matchupMap = {};
             data.matchups.forEach(m => {
-              if (!matchupMap[m.matchup_id]) {
-                matchupMap[m.matchup_id] = [];
-              }
+              if (!matchupMap[m.matchup_id]) matchupMap[m.matchup_id] = [];
               matchupMap[m.matchup_id].push(m);
             });
 
@@ -260,12 +247,10 @@
 
           const currentLeague = leagues[activeTab];
 
-          // Admin Portal Component
           const AdminPortal = () => {
             const [adminTab, setAdminTab] = useState('teams');
             const [selectedLeague, setSelectedLeague] = useState('lor');
             const [rankingForm, setRankingForm] = useState('');
-
             const allTeams = leagueData[selectedLeague]?.teams || [];
             const allMatchups = getMatchups(selectedLeague);
 
@@ -275,44 +260,24 @@
                   <div className="max-w-6xl mx-auto bg-gray-900 rounded-lg shadow-2xl">
                     <div className="p-6 border-b border-gray-700 flex justify-between items-center">
                       <h2 className="text-2xl font-bold text-white">Admin Portal</h2>
-                      <button 
-                        onClick={() => setShowAdmin(false)}
-                        className="text-gray-400 hover:text-white text-2xl"
-                      >
-                        ×
-                      </button>
+                      <button onClick={() => setShowAdmin(false)} className="text-gray-400 hover:text-white text-2xl">×</button>
                     </div>
 
                     <div className="p-6">
                       <div className="flex gap-4 mb-6 flex-wrap">
-                        <button
-                          onClick={() => setAdminTab('teams')}
-                          className={`px-4 py-2 rounded ${adminTab === 'teams' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
-                        >
+                        <button onClick={() => setAdminTab('teams')} className={`px-4 py-2 rounded ${adminTab === 'teams' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
                           Manage Teams
                         </button>
-                        <button
-                          onClick={() => setAdminTab('standings-notes')}
-                          className={`px-4 py-2 rounded ${adminTab === 'standings-notes' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
-                        >
+                        <button onClick={() => setAdminTab('standings-notes')} className={`px-4 py-2 rounded ${adminTab === 'standings-notes' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
                           Standings Notes
                         </button>
-                        <button
-                          onClick={() => setAdminTab('matchup-notes')}
-                          className={`px-4 py-2 rounded ${adminTab === 'matchup-notes' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
-                        >
+                        <button onClick={() => setAdminTab('matchup-notes')} className={`px-4 py-2 rounded ${adminTab === 'matchup-notes' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
                           Matchup Notes
                         </button>
-                        <button
-                          onClick={() => setAdminTab('power')}
-                          className={`px-4 py-2 rounded ${adminTab === 'power' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
-                        >
+                        <button onClick={() => setAdminTab('power')} className={`px-4 py-2 rounded ${adminTab === 'power' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
                           Power Rankings
                         </button>
-                        <button
-                          onClick={() => setAdminTab('settings')}
-                          className={`px-4 py-2 rounded ${adminTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
-                        >
+                        <button onClick={() => setAdminTab('settings')} className={`px-4 py-2 rounded ${adminTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}>
                           Settings
                         </button>
                       </div>
@@ -321,17 +286,12 @@
                         <div>
                           <div className="mb-4">
                             <label className="text-white block mb-2">Select League:</label>
-                            <select
-                              value={selectedLeague}
-                              onChange={(e) => setSelectedLeague(e.target.value)}
-                              className="bg-gray-800 text-white px-4 py-2 rounded w-full"
-                            >
+                            <select value={selectedLeague} onChange={(e) => setSelectedLeague(e.target.value)} className="bg-gray-800 text-white px-4 py-2 rounded w-full">
                               {Object.entries(leagues).map(([key, league]) => (
                                 <option key={key} value={key}>{league.name}</option>
                               ))}
                             </select>
                           </div>
-
                           <div className="space-y-4">
                             {allTeams.map(team => (
                               <div key={team.team_id} className="bg-gray-800 p-4 rounded-lg">
@@ -340,32 +300,16 @@
                                     <label className="text-gray-400 text-sm block mb-1">Original Name:</label>
                                     <p className="text-white mb-2">{team.original_name}</p>
                                     <label className="text-gray-400 text-sm block mb-1">Custom Name:</label>
-                                    <input
-                                      type="text"
-                                      value={teamOverrides[team.team_id]?.customName || ''}
-                                      onChange={(e) => handleTeamOverride(team.team_id, 'customName', e.target.value)}
-                                      placeholder="Leave blank to use original"
-                                      className="bg-gray-700 text-white px-3 py-2 rounded w-full"
-                                    />
+                                    <input type="text" value={teamOverrides[team.team_id]?.customName || ''} onChange={(e) => handleTeamOverride(team.team_id, 'customName', e.target.value)} placeholder="Leave blank to use original" className="bg-gray-700 text-white px-3 py-2 rounded w-full" />
                                   </div>
                                   <div>
                                     <label className="text-gray-400 text-sm block mb-1">Custom Logo:</label>
                                     <div className="flex items-center gap-4">
-                                      {team.avatar && (
-                                        <img src={team.avatar} alt={team.team_name} className="w-16 h-16 rounded" />
-                                      )}
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => handleLogoUpload(team.team_id, e)}
-                                        className="text-gray-400 text-sm"
-                                      />
+                                      {team.avatar && <img src={team.avatar} alt={team.team_name} className="w-16 h-16 rounded" />}
+                                      <input type="file" accept="image/*" onChange={(e) => handleLogoUpload(team.team_id, e)} className="text-gray-400 text-sm" />
                                     </div>
                                     {teamOverrides[team.team_id]?.customLogo && (
-                                      <button
-                                        onClick={() => handleTeamOverride(team.team_id, 'customLogo', null)}
-                                        className="text-red-400 text-sm mt-2"
-                                      >
+                                      <button onClick={() => handleTeamOverride(team.team_id, 'customLogo', null)} className="text-red-400 text-sm mt-2">
                                         Remove Custom Logo
                                       </button>
                                     )}
@@ -381,36 +325,24 @@
                         <div>
                           <div className="mb-4">
                             <label className="text-white block mb-2">Select League:</label>
-                            <select
-                              value={selectedLeague}
-                              onChange={(e) => setSelectedLeague(e.target.value)}
-                              className="bg-gray-800 text-white px-4 py-2 rounded w-full"
-                            >
+                            <select value={selectedLeague} onChange={(e) => setSelectedLeague(e.target.value)} className="bg-gray-800 text-white px-4 py-2 rounded w-full">
                               {Object.entries(leagues).map(([key, league]) => (
                                 <option key={key} value={key}>{league.name}</option>
                               ))}
                             </select>
                           </div>
-
                           <div className="space-y-4">
                             {allTeams.map(team => (
                               <div key={team.team_id} className="bg-gray-800 p-4 rounded-lg">
                                 <div className="flex items-center gap-3 mb-3">
-                                  {team.avatar && (
-                                    <img src={team.avatar} alt={team.team_name} className="w-12 h-12 rounded" />
-                                  )}
+                                  {team.avatar && <img src={team.avatar} alt={team.team_name} className="w-12 h-12 rounded" />}
                                   <div>
                                     <h3 className="text-white font-semibold">{team.team_name}</h3>
                                     <p className="text-gray-400 text-sm">{team.wins}-{team.losses}</p>
                                   </div>
                                 </div>
                                 <label className="text-gray-400 text-sm block mb-1">Standings Note:</label>
-                                <textarea
-                                  value={teamNotes[team.team_id] || ''}
-                                  onChange={(e) => setTeamNotes(prev => ({...prev, [team.team_id]: e.target.value}))}
-                                  placeholder="Add a note about this team (e.g., 'On a 3-game winning streak')"
-                                  className="bg-gray-700 text-white px-3 py-2 rounded w-full h-20"
-                                />
+                                <textarea value={teamNotes[team.team_id] || ''} onChange={(e) => setTeamNotes(prev => ({...prev, [team.team_id]: e.target.value}))} placeholder="Add a note about this team" className="bg-gray-700 text-white px-3 py-2 rounded w-full h-20" />
                               </div>
                             ))}
                           </div>
@@ -421,46 +353,30 @@
                         <div>
                           <div className="mb-4">
                             <label className="text-white block mb-2">Select League:</label>
-                            <select
-                              value={selectedLeague}
-                              onChange={(e) => setSelectedLeague(e.target.value)}
-                              className="bg-gray-800 text-white px-4 py-2 rounded w-full"
-                            >
+                            <select value={selectedLeague} onChange={(e) => setSelectedLeague(e.target.value)} className="bg-gray-800 text-white px-4 py-2 rounded w-full">
                               {Object.entries(leagues).map(([key, league]) => (
                                 <option key={key} value={key}>{league.name}</option>
                               ))}
                             </select>
                           </div>
-
                           <div className="space-y-4">
-                            {allMatchups.map((matchup, idx) => (
+                            {allMatchups.map((matchup) => (
                               <div key={matchup.matchupId} className="bg-gray-800 p-4 rounded-lg">
                                 <div className="flex items-center justify-between gap-4 mb-3">
                                   <div className="flex items-center gap-2">
-                                    {matchup.team1.avatar && (
-                                      <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-10 h-10 rounded" />
-                                    )}
+                                    {matchup.team1.avatar && <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-10 h-10 rounded" />}
                                     <span className="text-white">{matchup.team1.team_name}</span>
                                   </div>
                                   <span className="text-gray-500">VS</span>
                                   {matchup.team2 ? (
                                     <div className="flex items-center gap-2">
                                       <span className="text-white">{matchup.team2.team_name}</span>
-                                      {matchup.team2.avatar && (
-                                        <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-10 h-10 rounded" />
-                                      )}
+                                      {matchup.team2.avatar && <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-10 h-10 rounded" />}
                                     </div>
-                                  ) : (
-                                    <span className="text-gray-500">BYE</span>
-                                  )}
+                                  ) : (<span className="text-gray-500">BYE</span>)}
                                 </div>
                                 <label className="text-gray-400 text-sm block mb-1">Matchup Note:</label>
-                                <textarea
-                                  value={matchupNotes[matchup.matchupId] || ''}
-                                  onChange={(e) => setMatchupNotes(prev => ({...prev, [matchup.matchupId]: e.target.value}))}
-                                  placeholder="Add a note about this matchup (e.g., 'Rivalry game!' or 'Battle for playoff spot')"
-                                  className="bg-gray-700 text-white px-3 py-2 rounded w-full h-20"
-                                />
+                                <textarea value={matchupNotes[matchup.matchupId] || ''} onChange={(e) => setMatchupNotes(prev => ({...prev, [matchup.matchupId]: e.target.value}))} placeholder="Add a note about this matchup" className="bg-gray-700 text-white px-3 py-2 rounded w-full h-20" />
                               </div>
                             ))}
                           </div>
@@ -471,57 +387,34 @@
                         <div>
                           <div className="mb-4">
                             <label className="text-white block mb-2">Select League:</label>
-                            <select
-                              value={selectedLeague}
-                              onChange={(e) => setSelectedLeague(e.target.value)}
-                              className="bg-gray-800 text-white px-4 py-2 rounded w-full"
-                            >
+                            <select value={selectedLeague} onChange={(e) => setSelectedLeague(e.target.value)} className="bg-gray-800 text-white px-4 py-2 rounded w-full">
                               {Object.entries(leagues).map(([key, league]) => (
                                 <option key={key} value={key}>{league.name}</option>
                               ))}
                             </select>
                           </div>
-
                           <div className="bg-gray-800 p-4 rounded mb-4">
                             <h3 className="text-white font-bold mb-2">How to Format Power Rankings:</h3>
-                            <p className="text-gray-400 text-sm mb-2">Enter one team per line in this format:</p>
-                            <code className="text-green-400 text-sm block mb-2">Team Name | change | note</code>
-                            <p className="text-gray-400 text-sm">Example:</p>
-                            <code className="text-green-400 text-sm block">The Champions | 1 | Dominating on both sides</code>
-                            <code className="text-green-400 text-sm block">Last Place | -2 | Injuries piling up</code>
-                            <code className="text-green-400 text-sm block">Middle Team | 0 | Steady performance</code>
+                            <p className="text-gray-400 text-sm mb-2">Enter one team per line:</p>
+                            <code className="text-green-400 text-sm block">Team Name | change | note</code>
+                            <p className="text-gray-400 text-sm mt-2">Example:</p>
+                            <code className="text-green-400 text-sm block">Champions | 1 | On fire!</code>
                           </div>
-
-                          <textarea
-                            value={rankingForm}
-                            onChange={(e) => setRankingForm(e.target.value)}
-                            placeholder="Team Name 1 | 0 | Your note here
-Team Name 2 | 1 | Another note
-Team Name 3 | -1 | Third note"
-                            className="bg-gray-700 text-white px-4 py-3 rounded w-full h-96 font-mono text-sm"
-                          />
-
-                          <button
-                            onClick={() => {
-                              const lines = rankingForm.trim().split('\n');
-                              const rankings = lines.map(line => {
-                                const parts = line.split('|').map(s => s.trim());
-                                const teamName = parts[0] || '';
-                                const change = parseInt(parts[1]) || 0;
-                                const note = parts[2] || '';
-                                const rankingKey = `${selectedLeague}_${teamName.toLowerCase().replace(/\s/g, '_')}`;
-                                
-                                if (note) {
-                                  setPowerRankingNotes(prev => ({...prev, [rankingKey]: note}));
-                                }
-                                
-                                return { teamName, change };
-                              });
-                              updatePowerRankings(selectedLeague, rankings);
-                              alert('Power rankings updated!');
-                            }}
-                            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-                          >
+                          <textarea value={rankingForm} onChange={(e) => setRankingForm(e.target.value)} placeholder="Team Name 1 | 0 | Note here&#10;Team Name 2 | 1 | Another note" className="bg-gray-700 text-white px-4 py-3 rounded w-full h-96 font-mono text-sm" />
+                          <button onClick={() => {
+                            const lines = rankingForm.trim().split('\n');
+                            const rankings = lines.map(line => {
+                              const parts = line.split('|').map(s => s.trim());
+                              const teamName = parts[0] || '';
+                              const change = parseInt(parts[1]) || 0;
+                              const note = parts[2] || '';
+                              const rankingKey = `${selectedLeague}_${teamName.toLowerCase().replace(/\s/g, '_')}`;
+                              if (note) setPowerRankingNotes(prev => ({...prev, [rankingKey]: note}));
+                              return { teamName, change };
+                            });
+                            updatePowerRankings(selectedLeague, rankings);
+                            alert('Power rankings updated!');
+                          }} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
                             Save Power Rankings
                           </button>
                         </div>
@@ -531,18 +424,9 @@ Team Name 3 | -1 | Third note"
                         <div className="space-y-6">
                           <div>
                             <label className="text-white block mb-2">Current Week:</label>
-                            <input
-                              type="number"
-                              value={currentWeek}
-                              onChange={(e) => setCurrentWeek(parseInt(e.target.value))}
-                              className="bg-gray-700 text-white px-4 py-2 rounded w-32"
-                            />
+                            <input type="number" value={currentWeek} onChange={(e) => setCurrentWeek(parseInt(e.target.value))} className="bg-gray-700 text-white px-4 py-2 rounded w-32" />
                           </div>
-
-                          <button
-                            onClick={fetchAllLeagueData}
-                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
-                          >
+                          <button onClick={fetchAllLeagueData} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded">
                             Refresh All Data
                           </button>
                         </div>
@@ -550,13 +434,7 @@ Team Name 3 | -1 | Third note"
                     </div>
 
                     <div className="p-6 border-t border-gray-700">
-                      <button
-                        onClick={() => {
-                          fetchAllLeagueData();
-                          setShowAdmin(false);
-                        }}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-                      >
+                      <button onClick={() => { fetchAllLeagueData(); setShowAdmin(false); }} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
                         Apply Changes & Close
                       </button>
                     </div>
@@ -575,10 +453,7 @@ Team Name 3 | -1 | Third note"
                   <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent">
                     Fantasy League HQ
                   </h1>
-                  <button
-                    onClick={() => setShowAdmin(true)}
-                    className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors"
-                  >
+                  <button onClick={() => setShowAdmin(true)} className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors">
                     <Settings />
                     <span>Admin</span>
                   </button>
@@ -588,20 +463,7 @@ Team Name 3 | -1 | Third note"
               <div className="container mx-auto px-4 py-6">
                 <div className="flex gap-4 mb-6 overflow-x-auto">
                   {Object.entries(leagues).map(([key, league]) => (
-                    <button
-                      key={key}
-                      onClick={() => setActiveTab(key)}
-                      className={`flex items-center gap-3 px-6 py-3 rounded-lg transition-all ${
-                        activeTab === key
-                          ? 'scale-105 shadow-lg'
-                          : 'bg-gray-800 bg-opacity-50 hover:bg-opacity-70'
-                      }`}
-                      style={{
-                        backgroundColor: activeTab === key ? league.colors.bg : undefined,
-                        borderColor: activeTab === key ? league.colors.primary : undefined,
-                        borderWidth: activeTab === key ? '2px' : '0'
-                      }}
-                    >
+                    <button key={key} onClick={() => setActiveTab(key)} className={`flex items-center gap-3 px-6 py-3 rounded-lg transition-all ${activeTab === key ? 'scale-105 shadow-lg' : 'bg-gray-800 bg-opacity-50 hover:bg-opacity-70'}`} style={{ backgroundColor: activeTab === key ? league.colors.bg : undefined, borderColor: activeTab === key ? league.colors.primary : undefined, borderWidth: activeTab === key ? '2px' : '0' }}>
                       <ShieldIcon color={league.colors.primary} />
                       <span className="font-semibold whitespace-nowrap">{league.name}</span>
                     </button>
@@ -609,18 +471,40 @@ Team Name 3 | -1 | Third note"
                 </div>
 
                 <div className="flex gap-4 mb-6 bg-gray-800 bg-opacity-50 p-2 rounded-lg">
-                  <button
-                    onClick={() => setActiveView('standings')}
-                    className={`flex-1 py-2 px-4 rounded-lg transition-all ${
-                      activeView === 'standings'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
+                  <button onClick={() => setActiveView('standings')} className={`flex-1 py-2 px-4 rounded-lg transition-all ${activeView === 'standings' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                     Standings
                   </button>
-                  <button
-                    onClick={() => setActiveView('matchups')}
-                    className={`flex-1 py-2 px-4 rounded-lg transition-all ${
-                      activeView === 'matchups'
-                        ? 'bg-blue-600 text
+                  <button onClick={() => setActiveView('matchups')} className={`flex-1 py-2 px-4 rounded-lg transition-all ${activeView === 'matchups' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                    Week {currentWeek} Matchups
+                  </button>
+                  <button onClick={() => setActiveView('power')} className={`flex-1 py-2 px-4 rounded-lg transition-all ${activeView === 'power' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                    Power Rankings
+                  </button>
+                </div>
+
+                {loading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-400">Loading league data...</p>
+                  </div>
+                ) : !leagueData[activeTab] || !leagueData[activeTab].teams || leagueData[activeTab].teams.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-yellow-400 text-lg">No data available</p>
+                  </div>
+                ) : (
+                  <div>
+                    {activeView === 'standings' && (
+                      <div>
+                        {currentLeague.hasDivisions ? (
+                          <div className="grid md:grid-cols-2 gap-6">
+                            {['east', 'west'].map(division => {
+                              const standings = getStandingsByDivision(activeTab)[division];
+                              return (
+                                <div key={division} className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
+                                  <h2 className="text-2xl font-bold mb-4 capitalize" style={{ color: currentLeague.colors.secondary }}>
+                                    {division} Division
+                                  </h2>
+                                  <div className="space-y-3">
+                                    {standings.map((team, idx) => (
+                                      <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4">
+                                        <div className="flex items-center gap
