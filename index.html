@@ -167,14 +167,36 @@
               const teamId = `${leagueKey}_${roster.roster_id}`;
               const override = teamOverrides[teamId];
               
+              // Try multiple avatar sources
               let teamAvatar = null;
+              
+              // First check for custom override
               if (override?.customLogo) {
                 teamAvatar = override.customLogo;
-              } else if (user?.metadata?.avatar) {
-                teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.metadata.avatar}`;
-              } else if (user?.avatar) {
-                teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.avatar}`;
+              } 
+              // Then check Sleeper avatars
+              else {
+                // Try user avatar first (most common)
+                if (user?.avatar) {
+                  teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.avatar}`;
+                }
+                // Try metadata avatar
+                else if (user?.metadata?.avatar) {
+                  teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.metadata.avatar}`;
+                }
+                // Try full-size if thumbs don't work
+                else if (user?.avatar) {
+                  teamAvatar = `https://sleepercdn.com/avatars/${user.avatar}`;
+                }
               }
+              
+              // Log for debugging
+              console.log(`Team: ${user?.display_name || 'Unknown'}`, {
+                userId: user?.user_id,
+                avatar: user?.avatar,
+                metadataAvatar: user?.metadata?.avatar,
+                finalAvatar: teamAvatar
+              });
               
               return {
                 roster_id: roster.roster_id,
