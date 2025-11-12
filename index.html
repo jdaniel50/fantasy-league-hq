@@ -103,6 +103,10 @@
             saveToStorage('powerRankings', powerRankings);
           }, [powerRankings]);
 
+          useEffect(() => {
+            saveToStorage('powerRankingNotes', powerRankingNotes);
+          }, [powerRankingNotes]);
+
           const leagues = {
             lor: {
               id: '1186844188245356544',
@@ -374,12 +378,6 @@
                           Manage Teams
                         </button>
                         <button
-                          onClick={() => setAdminTab('leagues')}
-                          className={`px-4 py-2 rounded ${adminTab === 'leagues' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
-                        >
-                          League Logos
-                        </button>
-                        <button
                           onClick={() => setAdminTab('standings-notes')}
                           className={`px-4 py-2 rounded ${adminTab === 'standings-notes' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400'}`}
                         >
@@ -465,47 +463,36 @@
                         </div>
                       )}
 
-                      {adminTab === 'leagues' && (
-                        <div>
-                          <h3 className="text-white text-xl font-bold mb-4">Upload League Logos</h3>
-                          <div className="space-y-6">
-                            {Object.entries(leagues).map(([key, league]) => (
-                              <div key={key} className="bg-gray-800 p-4 rounded-lg">
-                                <h4 className="text-white font-semibold mb-3">{league.name}</h4>
-                                <div className="flex items-center gap-4">
-                                  <img 
-                                    src={leagueLogos[key]} 
-                                    alt={league.name} 
-                                    className="w-20 h-20 rounded object-cover"
-                                  />
-                                  <div>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      onChange={(e) => handleLeagueLogoUpload(key, e)}
-                                      className="text-gray-400 text-sm"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
                       {adminTab === 'standings-notes' && (
                         <div>
-                          <h3 className="text-white text-xl font-bold mb-4">Standings Notes</h3>
-                          <p className="text-gray-400 text-sm mb-4">Add context or commentary for each league's standings page</p>
-                          <div className="space-y-6">
-                            {Object.entries(leagues).map(([key, league]) => (
-                              <div key={key} className="bg-gray-800 p-4 rounded-lg">
-                                <label className="text-white font-semibold block mb-2">{league.name}</label>
+                          <h3 className="text-white text-xl font-bold mb-4">Team Notes (Standings)</h3>
+                          <p className="text-gray-400 text-sm mb-4">Add notes that will appear under each team in the standings</p>
+                          <div className="mb-4">
+                            <label className="text-white block mb-2">Select League:</label>
+                            <select
+                              value={selectedLeague}
+                              onChange={(e) => setSelectedLeague(e.target.value)}
+                              className="bg-gray-800 text-white px-4 py-2 rounded w-full"
+                            >
+                              {Object.entries(leagues).map(([key, league]) => (
+                                <option key={key} value={key}>{league.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-4">
+                            {allTeams.map(team => (
+                              <div key={team.team_id} className="bg-gray-800 p-4 rounded-lg">
+                                <div className="flex items-center gap-3 mb-2">
+                                  {team.avatar && (
+                                    <img src={team.avatar} alt={team.team_name} className="w-10 h-10 rounded" />
+                                  )}
+                                  <label className="text-white font-semibold">{team.team_name}</label>
+                                </div>
                                 <textarea
-                                  value={standingsNotes[key]}
-                                  onChange={(e) => setStandingsNotes(prev => ({...prev, [key]: e.target.value}))}
-                                  placeholder="Add notes about standings, playoff implications, etc."
-                                  className="bg-gray-700 text-white px-4 py-3 rounded w-full h-32"
+                                  value={standingsNotes[team.team_id] || ''}
+                                  onChange={(e) => setStandingsNotes(prev => ({...prev, [team.team_id]: e.target.value}))}
+                                  placeholder="Add a note about this team..."
+                                  className="bg-gray-700 text-white px-4 py-3 rounded w-full h-20"
                                 />
                               </div>
                             ))}
@@ -516,19 +503,52 @@
                       {adminTab === 'matchup-notes' && (
                         <div>
                           <h3 className="text-white text-xl font-bold mb-4">Matchup Notes</h3>
-                          <p className="text-gray-400 text-sm mb-4">Add notes or analysis for the current week's matchups</p>
-                          <div className="space-y-6">
-                            {Object.entries(leagues).map(([key, league]) => (
-                              <div key={key} className="bg-gray-800 p-4 rounded-lg">
-                                <label className="text-white font-semibold block mb-2">{league.name} - Week {currentWeek}</label>
-                                <textarea
-                                  value={matchupNotes[key]}
-                                  onChange={(e) => setMatchupNotes(prev => ({...prev, [key]: e.target.value}))}
-                                  placeholder="Add matchup analysis, injury notes, key players to watch, etc."
-                                  className="bg-gray-700 text-white px-4 py-3 rounded w-full h-32"
-                                />
-                              </div>
-                            ))}
+                          <p className="text-gray-400 text-sm mb-4">Add notes for each individual matchup in Week {currentWeek}</p>
+                          <div className="mb-4">
+                            <label className="text-white block mb-2">Select League:</label>
+                            <select
+                              value={selectedLeague}
+                              onChange={(e) => setSelectedLeague(e.target.value)}
+                              className="bg-gray-800 text-white px-4 py-2 rounded w-full"
+                            >
+                              {Object.entries(leagues).map(([key, league]) => (
+                                <option key={key} value={key}>{league.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-4">
+                            {getMatchups(selectedLeague).map((matchup, idx) => {
+                              const matchupKey = `${selectedLeague}_week${currentWeek}_matchup${idx}`;
+                              return (
+                                <div key={matchupKey} className="bg-gray-800 p-4 rounded-lg">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                      {matchup.team1.avatar && (
+                                        <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-8 h-8 rounded" />
+                                      )}
+                                      <span className="text-white font-semibold">{matchup.team1.team_name}</span>
+                                    </div>
+                                    <span className="text-gray-400">VS</span>
+                                    {matchup.team2 ? (
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-white font-semibold">{matchup.team2.team_name}</span>
+                                        {matchup.team2.avatar && (
+                                          <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-8 h-8 rounded" />
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-gray-400">BYE</span>
+                                    )}
+                                  </div>
+                                  <textarea
+                                    value={matchupNotes[matchupKey] || ''}
+                                    onChange={(e) => setMatchupNotes(prev => ({...prev, [matchupKey]: e.target.value}))}
+                                    placeholder="Add analysis, injury notes, key matchups, etc."
+                                    className="bg-gray-700 text-white px-4 py-3 rounded w-full h-20"
+                                  />
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -564,7 +584,7 @@
                             placeholder="Team Name 1 | 0
 Team Name 2 | 1
 Team Name 3 | -1"
-                            className="bg-gray-700 text-white px-4 py-3 rounded w-full h-64 font-mono text-sm"
+                            className="bg-gray-700 text-white px-4 py-3 rounded w-full h-64 font-mono text-sm mb-4"
                           />
 
                           <button
@@ -580,10 +600,33 @@ Team Name 3 | -1"
                               updatePowerRankings(selectedLeague, rankings);
                               alert('Power rankings updated!');
                             }}
-                            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded mb-6"
                           >
                             Save Power Rankings
                           </button>
+
+                          <div className="border-t border-gray-700 pt-6">
+                            <h3 className="text-white font-bold text-xl mb-4">Add Notes to Each Ranking</h3>
+                            <p className="text-gray-400 text-sm mb-4">Add commentary for each team in the power rankings</p>
+                            <div className="space-y-4">
+                              {powerRankings[selectedLeague]?.rankings.map((ranking, idx) => {
+                                const noteKey = `${selectedLeague}_${ranking.teamName}`;
+                                return (
+                                  <div key={idx} className="bg-gray-800 p-4 rounded-lg">
+                                    <label className="text-white font-semibold block mb-2">
+                                      #{idx + 1} - {ranking.teamName}
+                                    </label>
+                                    <textarea
+                                      value={powerRankingNotes[noteKey] || ''}
+                                      onChange={(e) => setPowerRankingNotes(prev => ({...prev, [noteKey]: e.target.value}))}
+                                      placeholder="Why this ranking? Recent performance, outlook, etc."
+                                      className="bg-gray-700 text-white px-4 py-3 rounded w-full h-20"
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -760,17 +803,6 @@ Team Name 3 | -1"
                   <div>
                     {activeView === 'standings' && (
                       <div>
-                        {standingsNotes[activeTab] && (
-                          <div className="bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg p-4 mb-6">
-                            <div className="flex items-start gap-3">
-                              <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                              </svg>
-                              <p className="text-blue-100 whitespace-pre-wrap">{standingsNotes[activeTab]}</p>
-                            </div>
-                          </div>
-                        )}
-                        
                         {currentLeague.hasDivisions ? (
                           <div className="grid md:grid-cols-2 gap-6">
                             {['east', 'west'].map(division => {
@@ -782,21 +814,28 @@ Team Name 3 | -1"
                                   </h2>
                                   <div className="space-y-3">
                                     {standings.map((team, idx) => (
-                                      <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex items-center gap-4 hover:bg-opacity-70 transition-all">
-                                        <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
-                                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                          {team.avatar ? (
-                                            <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
-                                          ) : (
-                                            <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
-                                          )}
+                                      <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 hover:bg-opacity-70 transition-all">
+                                        <div className="flex items-center gap-4 mb-2">
+                                          <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
+                                          <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                            {team.avatar ? (
+                                              <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
+                                            ) : (
+                                              <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
+                                            )}
+                                          </div>
+                                          <div className="flex-1">
+                                            <h3 className="font-semibold text-lg">{team.team_name}</h3>
+                                            <p className="text-sm text-gray-400">
+                                              {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
+                                            </p>
+                                          </div>
                                         </div>
-                                        <div className="flex-1">
-                                          <h3 className="font-semibold text-lg">{team.team_name}</h3>
-                                          <p className="text-sm text-gray-400">
-                                            {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
-                                          </p>
-                                        </div>
+                                        {standingsNotes[team.team_id] && (
+                                          <div className="mt-2 pl-20 text-sm text-gray-300 italic border-l-2 border-blue-500 pl-3">
+                                            {standingsNotes[team.team_id]}
+                                          </div>
+                                        )}
                                       </div>
                                     ))}
                                   </div>
@@ -811,21 +850,28 @@ Team Name 3 | -1"
                             </h2>
                             <div className="space-y-3">
                               {getStandings(activeTab).map((team, idx) => (
-                                <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex items-center gap-4 hover:bg-opacity-70 transition-all">
-                                  <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
-                                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                    {team.avatar ? (
-                                      <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
-                                    )}
+                                <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 hover:bg-opacity-70 transition-all">
+                                  <div className="flex items-center gap-4 mb-2">
+                                    <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
+                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                      {team.avatar ? (
+                                        <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
+                                      )}
+                                    </div>
+                                    <div className="flex-1">
+                                      <h3 className="font-semibold text-lg">{team.team_name}</h3>
+                                      <p className="text-sm text-gray-400">
+                                        {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div className="flex-1">
-                                    <h3 className="font-semibold text-lg">{team.team_name}</h3>
-                                    <p className="text-sm text-gray-400">
-                                      {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
-                                    </p>
-                                  </div>
+                                  {standingsNotes[team.team_id] && (
+                                    <div className="mt-2 pl-20 text-sm text-gray-300 italic border-l-2 border-blue-500 pl-3">
+                                      {standingsNotes[team.team_id]}
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -836,65 +882,65 @@ Team Name 3 | -1"
 
                     {activeView === 'matchups' && (
                       <div>
-                        {matchupNotes[activeTab] && (
-                          <div className="bg-purple-900 bg-opacity-30 border border-purple-700 rounded-lg p-4 mb-6">
-                            <div className="flex items-start gap-3">
-                              <svg className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                              </svg>
-                              <p className="text-purple-100 whitespace-pre-wrap">{matchupNotes[activeTab]}</p>
-                            </div>
-                          </div>
-                        )}
-                        
                         <div className="grid gap-6">
-                          {getMatchups(activeTab).map((matchup, idx) => (
-                            <div key={idx} className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
-                              <div className="flex items-center justify-between gap-6">
-                                <div className="flex-1 flex items-center gap-4">
-                                  <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                    {matchup.team1.avatar ? (
-                                      <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <span className="text-2xl font-bold text-gray-400">{matchup.team1.team_name.charAt(0)}</span>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <h3 className="font-semibold text-lg">{matchup.team1.team_name}</h3>
-                                    <p className="text-sm text-gray-400">{matchup.team1.wins}-{matchup.team1.losses}</p>
-                                    <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
-                                      {matchup.team1.points.toFixed(2)}
-                                    </p>
-                                    <p className="text-xs text-gray-500">Proj: {matchup.team1.projected.toFixed(2)}</p>
-                                  </div>
-                                </div>
-
-                                <div className="text-3xl font-bold text-gray-600">VS</div>
-
-                                {matchup.team2 ? (
-                                  <div className="flex-1 flex items-center gap-4 justify-end">
-                                    <div className="text-right">
-                                      <h3 className="font-semibold text-lg">{matchup.team2.team_name}</h3>
-                                      <p className="text-sm text-gray-400">{matchup.team2.wins}-{matchup.team2.losses}</p>
-                                      <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
-                                        {matchup.team2.points.toFixed(2)}
-                                      </p>
-                                      <p className="text-xs text-gray-500">Proj: {matchup.team2.projected.toFixed(2)}</p>
-                                    </div>
+                          {getMatchups(activeTab).map((matchup, idx) => {
+                            const matchupKey = `${activeTab}_week${currentWeek}_matchup${idx}`;
+                            return (
+                              <div key={idx} className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
+                                <div className="flex items-center justify-between gap-6">
+                                  <div className="flex-1 flex items-center gap-4">
                                     <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                      {matchup.team2.avatar ? (
-                                        <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-full h-full object-cover" />
+                                      {matchup.team1.avatar ? (
+                                        <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-full h-full object-cover" />
                                       ) : (
-                                        <span className="text-2xl font-bold text-gray-400">{matchup.team2.team_name.charAt(0)}</span>
+                                        <span className="text-2xl font-bold text-gray-400">{matchup.team1.team_name.charAt(0)}</span>
                                       )}
                                     </div>
+                                    <div>
+                                      <h3 className="font-semibold text-lg">{matchup.team1.team_name}</h3>
+                                      <p className="text-sm text-gray-400">{matchup.team1.wins}-{matchup.team1.losses}</p>
+                                      <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
+                                        {matchup.team1.points.toFixed(2)}
+                                      </p>
+                                      <p className="text-xs text-gray-500">Proj: {matchup.team1.projected.toFixed(2)}</p>
+                                    </div>
                                   </div>
-                                ) : (
-                                  <div className="flex-1 text-right text-gray-500">BYE WEEK</div>
+
+                                  <div className="text-3xl font-bold text-gray-600">VS</div>
+
+                                  {matchup.team2 ? (
+                                    <div className="flex-1 flex items-center gap-4 justify-end">
+                                      <div className="text-right">
+                                        <h3 className="font-semibold text-lg">{matchup.team2.team_name}</h3>
+                                        <p className="text-sm text-gray-400">{matchup.team2.wins}-{matchup.team2.losses}</p>
+                                        <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
+                                          {matchup.team2.points.toFixed(2)}
+                                        </p>
+                                        <p className="text-xs text-gray-500">Proj: {matchup.team2.projected.toFixed(2)}</p>
+                                      </div>
+                                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                        {matchup.team2.avatar ? (
+                                          <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <span className="text-2xl font-bold text-gray-400">{matchup.team2.team_name.charAt(0)}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex-1 text-right text-gray-500">BYE WEEK</div>
+                                  )}
+                                </div>
+                                {matchupNotes[matchupKey] && (
+                                  <div className="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-300 italic">
+                                    <svg className="w-4 h-4 inline mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                    </svg>
+                                    {matchupNotes[matchupKey]}
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -924,33 +970,41 @@ Team Name 3 | -1"
                                 t.team_name.toLowerCase().includes(ranking.teamName.toLowerCase()) ||
                                 ranking.teamName.toLowerCase().includes(t.team_name.toLowerCase())
                               );
+                              const noteKey = `${activeTab}_${ranking.teamName}`;
                               
                               return (
-                                <div key={idx} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 flex items-center gap-4 hover:bg-opacity-70 transition-all">
-                                  <div className="flex items-center gap-3">
-                                    <div className="text-2xl font-bold w-8" style={{ color: currentLeague.colors.primary }}>
-                                      {idx + 1}
+                                <div key={idx} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 hover:bg-opacity-70 transition-all">
+                                  <div className="flex items-center gap-4 mb-2">
+                                    <div className="flex items-center gap-3">
+                                      <div className="text-2xl font-bold w-8" style={{ color: currentLeague.colors.primary }}>
+                                        {idx + 1}
+                                      </div>
+                                      {getRankIcon(ranking.change)}
                                     </div>
-                                    {getRankIcon(ranking.change)}
-                                  </div>
-                                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                    {team?.avatar ? (
-                                      <img src={team.avatar} alt={ranking.teamName} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <span className="text-xl font-bold text-gray-400">{ranking.teamName.charAt(0)}</span>
+                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                      {team?.avatar ? (
+                                        <img src={team.avatar} alt={ranking.teamName} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <span className="text-xl font-bold text-gray-400">{ranking.teamName.charAt(0)}</span>
+                                      )}
+                                    </div>
+                                    <div className="flex-1">
+                                      <h3 className="font-semibold text-lg">{ranking.teamName}</h3>
+                                      {team && (
+                                        <p className="text-sm text-gray-400">
+                                          {team.wins}-{team.losses} • {team.points_for.toFixed(2)} PF
+                                        </p>
+                                      )}
+                                    </div>
+                                    {ranking.change !== 0 && (
+                                      <div className={`text-sm font-semibold ${ranking.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        {ranking.change > 0 ? '+' : ''}{ranking.change}
+                                      </div>
                                     )}
                                   </div>
-                                  <div className="flex-1">
-                                    <h3 className="font-semibold text-lg">{ranking.teamName}</h3>
-                                    {team && (
-                                      <p className="text-sm text-gray-400">
-                                        {team.wins}-{team.losses} • {team.points_for.toFixed(2)} PF
-                                      </p>
-                                    )}
-                                  </div>
-                                  {ranking.change !== 0 && (
-                                    <div className={`text-sm font-semibold ${ranking.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                      {ranking.change > 0 ? '+' : ''}{ranking.change}
+                                  {powerRankingNotes[noteKey] && (
+                                    <div className="mt-2 pl-20 text-sm text-gray-300 italic border-l-2 border-yellow-500 pl-3">
+                                      {powerRankingNotes[noteKey]}
                                     </div>
                                   )}
                                 </div>
