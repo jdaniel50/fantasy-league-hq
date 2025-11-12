@@ -30,104 +30,43 @@
           const [loading, setLoading] = useState(true);
           const [currentWeek, setCurrentWeek] = useState(10);
           
-          // Load saved data from localStorage on mount
-          const loadFromStorage = (key, defaultValue) => {
-            try {
-              const saved = localStorage.getItem(key);
-              return saved ? JSON.parse(saved) : defaultValue;
-            } catch (e) {
-              console.error('Error loading from storage:', e);
-              return defaultValue;
-            }
-          };
-
-          // Save to localStorage whenever data changes
-          const saveToStorage = (key, value) => {
-            try {
-              localStorage.setItem(key, JSON.stringify(value));
-            } catch (error) {
-              console.error('Error saving to storage:', error);
-            }
-          };
-          
-          // Custom overrides stored in localStorage
-          const [teamOverrides, setTeamOverrides] = useState(() => 
-            loadFromStorage('teamOverrides', {})
-          );
-          const [leagueLogos, setLeagueLogos] = useState(() => 
-            loadFromStorage('leagueLogos', {
-              lor: 'https://i.postimg.cc/q76TBt3B/League-of-Record-logo.png',
-              ffl: 'https://i.postimg.cc/VkwH2PjJ/FFL-logo.png',
-              dynasty: 'https://i.postimg.cc/J0svvXWz/Dynasty-Champs-logo.png'
-            })
-          );
-          const [standingsNotes, setStandingsNotes] = useState(() => 
-            loadFromStorage('standingsNotes', {
-              lor: '',
-              ffl: '',
-              dynasty: ''
-            })
-          );
-          const [matchupNotes, setMatchupNotes] = useState(() => 
-            loadFromStorage('matchupNotes', {
-              lor: '',
-              ffl: '',
-              dynasty: ''
-            })
-          );
-          const [powerRankings, setPowerRankings] = useState(() => 
-            loadFromStorage('powerRankings', {
-              lor: { week: 10, rankings: [] },
-              ffl: { week: 10, rankings: [] },
-              dynasty: { week: 10, rankings: [] }
-            })
-          );
-
-          // Save to localStorage whenever these states change
-          useEffect(() => {
-            saveToStorage('teamOverrides', teamOverrides);
-          }, [teamOverrides]);
-
-          useEffect(() => {
-            saveToStorage('leagueLogos', leagueLogos);
-          }, [leagueLogos]);
-
-          useEffect(() => {
-            saveToStorage('standingsNotes', standingsNotes);
-          }, [standingsNotes]);
-
-          useEffect(() => {
-            saveToStorage('matchupNotes', matchupNotes);
-          }, [matchupNotes]);
-
-          useEffect(() => {
-            saveToStorage('powerRankings', powerRankings);
-          }, [powerRankings]);
-
-          useEffect(() => {
-            saveToStorage('powerRankingNotes', powerRankingNotes);
-          }, [powerRankingNotes]);
+          // Custom overrides stored in memory
+          const [teamOverrides, setTeamOverrides] = useState({});
+          const [teamNotes, setTeamNotes] = useState({});
+          const [matchupNotes, setMatchupNotes] = useState({});
+          const [powerRankingNotes, setPowerRankingNotes] = useState({});
+          const [powerRankings, setPowerRankings] = useState({
+            lor: { week: 10, rankings: [] },
+            ffl: { week: 10, rankings: [] },
+            dynasty: { week: 10, rankings: [] }
+          });
 
           const leagues = {
             lor: {
               id: '1186844188245356544',
               name: 'League of Record',
-              colors: { primary: '#114477', secondary: '#47b26f' },
+              colors: { primary: '#47b26f', secondary: '#47b26f', bg: '#1a3a2a' },
               hasDivisions: true
             },
             ffl: {
               id: '1257084943821967360',
               name: 'FFL',
-              colors: { primary: '#5aacd8', secondary: '#1c3d5a' },
+              colors: { primary: '#5aacd8', secondary: '#5aacd8', bg: '#1a3d5a' },
               hasDivisions: false
             },
             dynasty: {
               id: '1186825886808555520',
               name: 'Dynasty Champs',
-              colors: { primary: '#1a465a', secondary: '#aaaaaa' },
+              colors: { primary: '#1a465a', secondary: '#2a5a7a', bg: '#0f2a3a' },
               hasDivisions: true
             }
           };
+
+          const ShieldIcon = ({ color }) => (
+            <svg className="w-8 h-8" viewBox="0 0 24 24" fill={color}>
+              <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+            </svg>
+          );
 
           useEffect(() => {
             fetchAllLeagueData();
@@ -172,29 +111,14 @@
               const teamId = `${leagueKey}_${roster.roster_id}`;
               const override = teamOverrides[teamId];
               
-              // Try multiple avatar sources - PRIORITIZE league-specific metadata avatar
               let teamAvatar = null;
-              
-              // First check for custom override
               if (override?.customLogo) {
                 teamAvatar = override.customLogo;
-              } 
-              // IMPORTANT: Check metadata.avatar FIRST (this is the league-specific team logo)
-              else if (user?.metadata?.avatar) {
+              } else if (user?.metadata?.avatar) {
                 teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.metadata.avatar}`;
-              }
-              // Only fall back to user.avatar (account logo) if no team-specific logo exists
-              else if (user?.avatar) {
+              } else if (user?.avatar) {
                 teamAvatar = `https://sleepercdn.com/avatars/thumbs/${user.avatar}`;
               }
-              
-              // Log for debugging
-              console.log(`Team: ${user?.display_name || 'Unknown'}`, {
-                leagueKey,
-                metadataAvatar: user?.metadata?.avatar,
-                userAvatar: user?.avatar,
-                finalAvatar: teamAvatar
-              });
               
               return {
                 roster_id: roster.roster_id,
@@ -228,20 +152,6 @@
               const reader = new FileReader();
               reader.onload = (e) => {
                 handleTeamOverride(teamId, 'customLogo', e.target.result);
-              };
-              reader.readAsDataURL(file);
-            }
-          };
-
-          const handleLeagueLogoUpload = (leagueKey, event) => {
-            const file = event.target.files[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                setLeagueLogos(prev => ({
-                  ...prev,
-                  [leagueKey]: e.target.result
-                }));
               };
               reader.readAsDataURL(file);
             }
@@ -296,11 +206,13 @@
               matchupMap[m.matchup_id].push(m);
             });
 
-            return Object.values(matchupMap).map(matchup => {
+            return Object.values(matchupMap).map((matchup, idx) => {
               const team1Data = data.teams.find(t => t.roster_id === matchup[0].roster_id);
               const team2Data = data.teams.find(t => t.roster_id === matchup[1]?.roster_id);
+              const matchupId = `${leagueKey}_w${currentWeek}_m${idx}`;
               
               return {
+                matchupId,
                 team1: {
                   ...team1Data,
                   points: matchup[0].points || 0,
@@ -355,6 +267,7 @@
             const [rankingForm, setRankingForm] = useState('');
 
             const allTeams = leagueData[selectedLeague]?.teams || [];
+            const allMatchups = getMatchups(selectedLeague);
 
             return (
               <div className="fixed inset-0 bg-black bg-opacity-75 z-50 overflow-y-auto">
@@ -466,8 +379,6 @@
 
                       {adminTab === 'standings-notes' && (
                         <div>
-                          <h3 className="text-white text-xl font-bold mb-4">Team Notes (Standings)</h3>
-                          <p className="text-gray-400 text-sm mb-4">Add notes that will appear under each team in the standings</p>
                           <div className="mb-4">
                             <label className="text-white block mb-2">Select League:</label>
                             <select
@@ -480,20 +391,25 @@
                               ))}
                             </select>
                           </div>
+
                           <div className="space-y-4">
                             {allTeams.map(team => (
                               <div key={team.team_id} className="bg-gray-800 p-4 rounded-lg">
-                                <div className="flex items-center gap-3 mb-2">
+                                <div className="flex items-center gap-3 mb-3">
                                   {team.avatar && (
-                                    <img src={team.avatar} alt={team.team_name} className="w-10 h-10 rounded" />
+                                    <img src={team.avatar} alt={team.team_name} className="w-12 h-12 rounded" />
                                   )}
-                                  <label className="text-white font-semibold">{team.team_name}</label>
+                                  <div>
+                                    <h3 className="text-white font-semibold">{team.team_name}</h3>
+                                    <p className="text-gray-400 text-sm">{team.wins}-{team.losses}</p>
+                                  </div>
                                 </div>
+                                <label className="text-gray-400 text-sm block mb-1">Standings Note:</label>
                                 <textarea
-                                  value={standingsNotes[team.team_id] || ''}
-                                  onChange={(e) => setStandingsNotes(prev => ({...prev, [team.team_id]: e.target.value}))}
-                                  placeholder="Add a note about this team..."
-                                  className="bg-gray-700 text-white px-4 py-3 rounded w-full h-20"
+                                  value={teamNotes[team.team_id] || ''}
+                                  onChange={(e) => setTeamNotes(prev => ({...prev, [team.team_id]: e.target.value}))}
+                                  placeholder="Add a note about this team (e.g., 'On a 3-game winning streak')"
+                                  className="bg-gray-700 text-white px-3 py-2 rounded w-full h-20"
                                 />
                               </div>
                             ))}
@@ -503,8 +419,6 @@
 
                       {adminTab === 'matchup-notes' && (
                         <div>
-                          <h3 className="text-white text-xl font-bold mb-4">Matchup Notes</h3>
-                          <p className="text-gray-400 text-sm mb-4">Add notes for each individual matchup in Week {currentWeek}</p>
                           <div className="mb-4">
                             <label className="text-white block mb-2">Select League:</label>
                             <select
@@ -517,39 +431,38 @@
                               ))}
                             </select>
                           </div>
+
                           <div className="space-y-4">
-                            {getMatchups(selectedLeague).map((matchup, idx) => {
-                              const matchupKey = `${selectedLeague}_week${currentWeek}_matchup${idx}`;
-                              return (
-                                <div key={matchupKey} className="bg-gray-800 p-4 rounded-lg">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                      {matchup.team1.avatar && (
-                                        <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-8 h-8 rounded" />
-                                      )}
-                                      <span className="text-white font-semibold">{matchup.team1.team_name}</span>
-                                    </div>
-                                    <span className="text-gray-400">VS</span>
-                                    {matchup.team2 ? (
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-white font-semibold">{matchup.team2.team_name}</span>
-                                        {matchup.team2.avatar && (
-                                          <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-8 h-8 rounded" />
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <span className="text-gray-400">BYE</span>
+                            {allMatchups.map((matchup, idx) => (
+                              <div key={matchup.matchupId} className="bg-gray-800 p-4 rounded-lg">
+                                <div className="flex items-center justify-between gap-4 mb-3">
+                                  <div className="flex items-center gap-2">
+                                    {matchup.team1.avatar && (
+                                      <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-10 h-10 rounded" />
                                     )}
+                                    <span className="text-white">{matchup.team1.team_name}</span>
                                   </div>
-                                  <textarea
-                                    value={matchupNotes[matchupKey] || ''}
-                                    onChange={(e) => setMatchupNotes(prev => ({...prev, [matchupKey]: e.target.value}))}
-                                    placeholder="Add analysis, injury notes, key matchups, etc."
-                                    className="bg-gray-700 text-white px-4 py-3 rounded w-full h-20"
-                                  />
+                                  <span className="text-gray-500">VS</span>
+                                  {matchup.team2 ? (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-white">{matchup.team2.team_name}</span>
+                                      {matchup.team2.avatar && (
+                                        <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-10 h-10 rounded" />
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-500">BYE</span>
+                                  )}
                                 </div>
-                              );
-                            })}
+                                <label className="text-gray-400 text-sm block mb-1">Matchup Note:</label>
+                                <textarea
+                                  value={matchupNotes[matchup.matchupId] || ''}
+                                  onChange={(e) => setMatchupNotes(prev => ({...prev, [matchup.matchupId]: e.target.value}))}
+                                  placeholder="Add a note about this matchup (e.g., 'Rivalry game!' or 'Battle for playoff spot')"
+                                  className="bg-gray-700 text-white px-3 py-2 rounded w-full h-20"
+                                />
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -572,62 +485,45 @@
                           <div className="bg-gray-800 p-4 rounded mb-4">
                             <h3 className="text-white font-bold mb-2">How to Format Power Rankings:</h3>
                             <p className="text-gray-400 text-sm mb-2">Enter one team per line in this format:</p>
-                            <code className="text-green-400 text-sm block mb-2">Team Name | change</code>
+                            <code className="text-green-400 text-sm block mb-2">Team Name | change | note</code>
                             <p className="text-gray-400 text-sm">Example:</p>
-                            <code className="text-green-400 text-sm block">The Champions | 1</code>
-                            <code className="text-green-400 text-sm block">Last Place | -2</code>
-                            <code className="text-green-400 text-sm block">Middle Team | 0</code>
+                            <code className="text-green-400 text-sm block">The Champions | 1 | Dominating on both sides</code>
+                            <code className="text-green-400 text-sm block">Last Place | -2 | Injuries piling up</code>
+                            <code className="text-green-400 text-sm block">Middle Team | 0 | Steady performance</code>
                           </div>
 
                           <textarea
                             value={rankingForm}
                             onChange={(e) => setRankingForm(e.target.value)}
-                            placeholder="Team Name 1 | 0
-Team Name 2 | 1
-Team Name 3 | -1"
-                            className="bg-gray-700 text-white px-4 py-3 rounded w-full h-64 font-mono text-sm mb-4"
+                            placeholder="Team Name 1 | 0 | Your note here
+Team Name 2 | 1 | Another note
+Team Name 3 | -1 | Third note"
+                            className="bg-gray-700 text-white px-4 py-3 rounded w-full h-96 font-mono text-sm"
                           />
 
                           <button
                             onClick={() => {
                               const lines = rankingForm.trim().split('\n');
                               const rankings = lines.map(line => {
-                                const [teamName, change] = line.split('|').map(s => s.trim());
-                                return {
-                                  teamName,
-                                  change: parseInt(change) || 0
-                                };
+                                const parts = line.split('|').map(s => s.trim());
+                                const teamName = parts[0] || '';
+                                const change = parseInt(parts[1]) || 0;
+                                const note = parts[2] || '';
+                                const rankingKey = `${selectedLeague}_${teamName.toLowerCase().replace(/\s/g, '_')}`;
+                                
+                                if (note) {
+                                  setPowerRankingNotes(prev => ({...prev, [rankingKey]: note}));
+                                }
+                                
+                                return { teamName, change };
                               });
                               updatePowerRankings(selectedLeague, rankings);
                               alert('Power rankings updated!');
                             }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded mb-6"
+                            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
                           >
                             Save Power Rankings
                           </button>
-
-                          <div className="border-t border-gray-700 pt-6">
-                            <h3 className="text-white font-bold text-xl mb-4">Add Notes to Each Ranking</h3>
-                            <p className="text-gray-400 text-sm mb-4">Add commentary for each team in the power rankings</p>
-                            <div className="space-y-4">
-                              {powerRankings[selectedLeague]?.rankings.map((ranking, idx) => {
-                                const noteKey = `${selectedLeague}_${ranking.teamName}`;
-                                return (
-                                  <div key={idx} className="bg-gray-800 p-4 rounded-lg">
-                                    <label className="text-white font-semibold block mb-2">
-                                      #{idx + 1} - {ranking.teamName}
-                                    </label>
-                                    <textarea
-                                      value={powerRankingNotes[noteKey] || ''}
-                                      onChange={(e) => setPowerRankingNotes(prev => ({...prev, [noteKey]: e.target.value}))}
-                                      placeholder="Why this ranking? Recent performance, outlook, etc."
-                                      className="bg-gray-700 text-white px-4 py-3 rounded w-full h-20"
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
                         </div>
                       )}
 
@@ -645,54 +541,10 @@ Team Name 3 | -1"
 
                           <button
                             onClick={fetchAllLeagueData}
-                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded block"
+                            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
                           >
                             Refresh All Data
                           </button>
-
-                          <div className="border-t border-gray-700 pt-6">
-                            <h3 className="text-white font-bold mb-4">Data Management</h3>
-                            
-                            <button
-                              onClick={() => {
-                                const allData = {
-                                  teamOverrides,
-                                  leagueLogos,
-                                  standingsNotes,
-                                  matchupNotes,
-                                  powerRankings,
-                                  currentWeek
-                                };
-                                const dataStr = JSON.stringify(allData, null, 2);
-                                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                                const url = URL.createObjectURL(dataBlob);
-                                const link = document.createElement('a');
-                                link.href = url;
-                                link.download = 'fantasy-league-backup.json';
-                                link.click();
-                                URL.revokeObjectURL(url);
-                              }}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded block mb-3"
-                            >
-                              Export All Settings (Backup)
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                if (confirm('Are you sure you want to clear ALL saved data? This cannot be undone!')) {
-                                  localStorage.clear();
-                                  window.location.reload();
-                                }
-                              }}
-                              className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded block"
-                            >
-                              Clear All Saved Data
-                            </button>
-
-                            <p className="text-gray-400 text-sm mt-4">
-                              All your customizations (logos, team names, notes, rankings) are automatically saved to your browser's storage.
-                            </p>
-                          </div>
                         </div>
                       )}
                     </div>
@@ -741,18 +593,16 @@ Team Name 3 | -1"
                       onClick={() => setActiveTab(key)}
                       className={`flex items-center gap-3 px-6 py-3 rounded-lg transition-all ${
                         activeTab === key
-                          ? 'bg-opacity-20 scale-105 shadow-lg'
+                          ? 'scale-105 shadow-lg'
                           : 'bg-gray-800 bg-opacity-50 hover:bg-opacity-70'
                       }`}
                       style={{
-                        backgroundColor: activeTab === key ? league.colors.primary : undefined,
-                        borderColor: activeTab === key ? league.colors.secondary : undefined,
+                        backgroundColor: activeTab === key ? league.colors.bg : undefined,
+                        borderColor: activeTab === key ? league.colors.primary : undefined,
                         borderWidth: activeTab === key ? '2px' : '0'
                       }}
                     >
-                      <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor" style={{ color: league.colors.secondary }}>
-                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
-                      </svg>
+                      <ShieldIcon color={league.colors.primary} />
                       <span className="font-semibold whitespace-nowrap">{league.name}</span>
                     </button>
                   ))}
@@ -773,256 +623,4 @@ Team Name 3 | -1"
                     onClick={() => setActiveView('matchups')}
                     className={`flex-1 py-2 px-4 rounded-lg transition-all ${
                       activeView === 'matchups'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Week {currentWeek} Matchups
-                  </button>
-                  <button
-                    onClick={() => setActiveView('power')}
-                    className={`flex-1 py-2 px-4 rounded-lg transition-all ${
-                      activeView === 'power'
-                        ? 'bg-blue-600 text-white'
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Power Rankings
-                  </button>
-                </div>
-
-                {loading ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-4 text-gray-400">Loading league data...</p>
-                  </div>
-                ) : !leagueData[activeTab] || !leagueData[activeTab].teams || leagueData[activeTab].teams.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-yellow-400 text-lg">No data available for this league</p>
-                  </div>
-                ) : (
-                  <div>
-                    {activeView === 'standings' && (
-                      <div>
-                        {currentLeague.hasDivisions ? (
-                          <div className="grid md:grid-cols-2 gap-6">
-                            {['east', 'west'].map(division => {
-                              const standings = getStandingsByDivision(activeTab)[division];
-                              return (
-                                <div key={division} className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
-                                  <h2 className="text-2xl font-bold mb-4 capitalize" style={{ color: currentLeague.colors.secondary }}>
-                                    {division} Division
-                                  </h2>
-                                  <div className="space-y-3">
-                                    {standings.map((team, idx) => (
-                                      <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 hover:bg-opacity-70 transition-all">
-                                        <div className="flex items-center gap-4 mb-2">
-                                          <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
-                                          <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                            {team.avatar ? (
-                                              <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
-                                            ) : (
-                                              <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
-                                            )}
-                                          </div>
-                                          <div className="flex-1">
-                                            <h3 className="font-semibold text-lg">{team.team_name}</h3>
-                                            <p className="text-sm text-gray-400">
-                                              {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
-                                            </p>
-                                          </div>
-                                        </div>
-                                        {standingsNotes[team.team_id] && (
-                                          <div className="mt-2 pl-20 text-sm text-gray-300 italic border-l-2 border-blue-500 pl-3">
-                                            {standingsNotes[team.team_id]}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
-                            <h2 className="text-2xl font-bold mb-4" style={{ color: currentLeague.colors.secondary }}>
-                              League Standings
-                            </h2>
-                            <div className="space-y-3">
-                              {getStandings(activeTab).map((team, idx) => (
-                                <div key={team.roster_id} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 hover:bg-opacity-70 transition-all">
-                                  <div className="flex items-center gap-4 mb-2">
-                                    <div className="text-2xl font-bold text-gray-500 w-8">{idx + 1}</div>
-                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                      {team.avatar ? (
-                                        <img src={team.avatar} alt={team.team_name} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <span className="text-xl font-bold text-gray-400">{team.team_name.charAt(0)}</span>
-                                      )}
-                                    </div>
-                                    <div className="flex-1">
-                                      <h3 className="font-semibold text-lg">{team.team_name}</h3>
-                                      <p className="text-sm text-gray-400">
-                                        {team.wins}-{team.losses}{team.ties > 0 ? `-${team.ties}` : ''} • {team.points_for.toFixed(2)} PF
-                                      </p>
-                                    </div>
-                                  </div>
-                                  {standingsNotes[team.team_id] && (
-                                    <div className="mt-2 pl-20 text-sm text-gray-300 italic border-l-2 border-blue-500 pl-3">
-                                      {standingsNotes[team.team_id]}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {activeView === 'matchups' && (
-                      <div>
-                        <div className="grid gap-6">
-                          {getMatchups(activeTab).map((matchup, idx) => {
-                            const matchupKey = `${activeTab}_week${currentWeek}_matchup${idx}`;
-                            return (
-                              <div key={idx} className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
-                                <div className="flex items-center justify-between gap-6">
-                                  <div className="flex-1 flex items-center gap-4">
-                                    <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                      {matchup.team1.avatar ? (
-                                        <img src={matchup.team1.avatar} alt={matchup.team1.team_name} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <span className="text-2xl font-bold text-gray-400">{matchup.team1.team_name.charAt(0)}</span>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <h3 className="font-semibold text-lg">{matchup.team1.team_name}</h3>
-                                      <p className="text-sm text-gray-400">{matchup.team1.wins}-{matchup.team1.losses}</p>
-                                      <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
-                                        {matchup.team1.points.toFixed(2)}
-                                      </p>
-                                      <p className="text-xs text-gray-500">Proj: {matchup.team1.projected.toFixed(2)}</p>
-                                    </div>
-                                  </div>
-
-                                  <div className="text-3xl font-bold text-gray-600">VS</div>
-
-                                  {matchup.team2 ? (
-                                    <div className="flex-1 flex items-center gap-4 justify-end">
-                                      <div className="text-right">
-                                        <h3 className="font-semibold text-lg">{matchup.team2.team_name}</h3>
-                                        <p className="text-sm text-gray-400">{matchup.team2.wins}-{matchup.team2.losses}</p>
-                                        <p className="text-2xl font-bold" style={{ color: currentLeague.colors.primary }}>
-                                          {matchup.team2.points.toFixed(2)}
-                                        </p>
-                                        <p className="text-xs text-gray-500">Proj: {matchup.team2.projected.toFixed(2)}</p>
-                                      </div>
-                                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                        {matchup.team2.avatar ? (
-                                          <img src={matchup.team2.avatar} alt={matchup.team2.team_name} className="w-full h-full object-cover" />
-                                        ) : (
-                                          <span className="text-2xl font-bold text-gray-400">{matchup.team2.team_name.charAt(0)}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="flex-1 text-right text-gray-500">BYE WEEK</div>
-                                  )}
-                                </div>
-                                {matchupNotes[matchupKey] && (
-                                  <div className="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-300 italic">
-                                    <svg className="w-4 h-4 inline mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                                      <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                                    </svg>
-                                    {matchupNotes[matchupKey]}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {activeView === 'power' && (
-                      <div className="bg-gray-800 bg-opacity-50 rounded-lg p-6 backdrop-blur-sm">
-                        <div className="flex items-center justify-between mb-6">
-                          <h2 className="text-2xl font-bold" style={{ color: currentLeague.colors.secondary }}>
-                            Power Rankings
-                          </h2>
-                          <span className="text-sm text-gray-400">Week {powerRankings[activeTab].week}</span>
-                        </div>
-                        {powerRankings[activeTab].rankings.length === 0 ? (
-                          <div className="text-center py-8">
-                            <p className="text-gray-400">No power rankings set yet.</p>
-                            <button
-                              onClick={() => setShowAdmin(true)}
-                              className="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-                            >
-                              Set Power Rankings in Admin
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {powerRankings[activeTab].rankings.map((ranking, idx) => {
-                              const team = leagueData[activeTab]?.teams.find(t => 
-                                t.team_name.toLowerCase().includes(ranking.teamName.toLowerCase()) ||
-                                ranking.teamName.toLowerCase().includes(t.team_name.toLowerCase())
-                              );
-                              const noteKey = `${activeTab}_${ranking.teamName}`;
-                              
-                              return (
-                                <div key={idx} className="bg-gray-900 bg-opacity-50 rounded-lg p-4 hover:bg-opacity-70 transition-all">
-                                  <div className="flex items-center gap-4 mb-2">
-                                    <div className="flex items-center gap-3">
-                                      <div className="text-2xl font-bold w-8" style={{ color: currentLeague.colors.primary }}>
-                                        {idx + 1}
-                                      </div>
-                                      {getRankIcon(ranking.change)}
-                                    </div>
-                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center flex-shrink-0">
-                                      {team?.avatar ? (
-                                        <img src={team.avatar} alt={ranking.teamName} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <span className="text-xl font-bold text-gray-400">{ranking.teamName.charAt(0)}</span>
-                                      )}
-                                    </div>
-                                    <div className="flex-1">
-                                      <h3 className="font-semibold text-lg">{ranking.teamName}</h3>
-                                      {team && (
-                                        <p className="text-sm text-gray-400">
-                                          {team.wins}-{team.losses} • {team.points_for.toFixed(2)} PF
-                                        </p>
-                                      )}
-                                    </div>
-                                    {ranking.change !== 0 && (
-                                      <div className={`text-sm font-semibold ${ranking.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                        {ranking.change > 0 ? '+' : ''}{ranking.change}
-                                      </div>
-                                    )}
-                                  </div>
-                                  {powerRankingNotes[noteKey] && (
-                                    <div className="mt-2 pl-20 text-sm text-gray-300 italic border-l-2 border-yellow-500 pl-3">
-                                      {powerRankingNotes[noteKey]}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        };
-
-        ReactDOM.render(<FantasyLeagueHQ />, document.getElementById('root'));
-    </script>
-</body>
-</html>
+                        ? 'bg-blue-600 text
