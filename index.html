@@ -1,37 +1,109 @@
-diff --git a/index.html b/index.html
-index 17bb2f1ce8d73580c38730d9f40d6149ae3b7c36..ea4727d432022e31f17490826be765f276957d1f 100644
---- a/index.html
-+++ b/index.html
-@@ -1,17 +1,30 @@
--
- <!DOCTYPE html>
- <html lang="en">
- <head>
-     <meta charset="UTF-8">
-     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-     <title>Fantasy League HQ</title>
-+    <link rel="preconnect" href="https://fonts.googleapis.com">
-+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-+    <script>
-+      tailwind.config = {
-+        theme: {
-+          extend: {
-+            fontFamily: {
-+              sans: ['Outfit', 'sans-serif']
-+            }
-+          }
-+        }
-+      }
-+    </script>
-     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-     <script src="https://cdn.tailwindcss.com"></script>
- </head>
--<body>
-+<body class="font-sans bg-slate-950">
-     <div id="root"></div>
-     <script src="app.js" type="text/babel"></script>
- </body>
- </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fantasy League Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 1.5rem;
+      background: #0b1020;
+      color: #f7f7f7;
+    }
+
+    h1 {
+      margin-bottom: 1rem;
+      font-size: 2rem;
+    }
+
+    .league-tabs, .subtabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .tab-btn {
+      padding: 0.5rem 0.9rem;
+      background: #1b2038;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #e0e0e0;
+    }
+    .tab-btn.active {
+      background: #4169e1;
+      color: white;
+    }
+
+    .section {
+      margin-top: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+      background: #151a2e;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 0.6rem;
+      border-bottom: 1px solid #22263d;
+    }
+    th {
+      background: #1f2340;
+      text-align: left;
+    }
+    .note-box {
+      width: 100%;
+      margin-top: 0.4rem;
+      padding: 0.4rem;
+      border-radius: 4px;
+      border: none;
+      background: #21263f;
+      color: #ffffff;
+    }
+    #matchups, #standings, #power-rankings {
+      margin-top: 1rem;
+    }
+
+    .small-label {
+      font-size: 0.85rem;
+      opacity: 0.85;
+    }
+
+    .power-input {
+      width: 50px;
+      padding: 0.3rem;
+      border-radius: 4px;
+      border: none;
+      background: #21263f;
+      color: #fff;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Fantasy League Dashboard</h1>
+
+<div class="league-tabs">
+  <button class="tab-btn" data-league="lor">League of Record</button>
+  <button class="tab-btn" data-league="ffl">FFL</button>
+  <button class="tab-btn" data-league="dynasty">Dynasty Champs</button>
+</div>
+
+<div class="subtabs" id="subtabs" style="display:none;">
+  <button class="tab-btn" data-section="standings">Standings</button>
+  <button class="tab-btn" data-section="matchups">Matchups</button>
+  <button class="tab-btn" data-section="power">Power Rankings</button>
+</div>
+
+<div id="content">
+  <!-- Dynamic content injected by script.js -->
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
