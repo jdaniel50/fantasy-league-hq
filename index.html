@@ -1,17 +1,37 @@
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fantasy League HQ</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-    <div id="root"></div>
-    <script src="app.js" type="text/babel"></script>
-</body>
-</html>
+diff --git a/index.html b/index.html
+index 17bb2f1ce8d73580c38730d9f40d6149ae3b7c36..ea4727d432022e31f17490826be765f276957d1f 100644
+--- a/index.html
++++ b/index.html
+@@ -1,17 +1,30 @@
+-
+ <!DOCTYPE html>
+ <html lang="en">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Fantasy League HQ</title>
++    <link rel="preconnect" href="https://fonts.googleapis.com">
++    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
++    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
++    <script>
++      tailwind.config = {
++        theme: {
++          extend: {
++            fontFamily: {
++              sans: ['Outfit', 'sans-serif']
++            }
++          }
++        }
++      }
++    </script>
+     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+     <script src="https://cdn.tailwindcss.com"></script>
+ </head>
+-<body>
++<body class="font-sans bg-slate-950">
+     <div id="root"></div>
+     <script src="app.js" type="text/babel"></script>
+ </body>
+ </html>
